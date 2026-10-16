@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinch engine tests</title>
+<style>
+  body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; background: #fff; color: #111; }
+  .pass { color: #0a7a32; } .fail { color: #b3261e; font-weight: 600; }
+  pre { white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>Pinch engine tests</h1>
+<p>Runs automatically. Add <code>?pinch-nowasm</code> to test the canvas fallback.</p>
+<pre id="log"></pre>
+<script src="../engine.js"></script>
+<script src="engine-tests.js"></script>
+</body>
+</html>

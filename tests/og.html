@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Pinch OG image</title>
+<!-- Source for assets/og-image.jpg (1200 x 630). Screenshot this page at 1200 x 630. -->
+<link rel="stylesheet" href="../tokens.css">
+<style>
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body { display: grid; grid-template-columns: 500px 1fr; gap: 40px; padding: 56px; background: var(--bg); }
+  .copy { display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 12px; font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
+  .brand svg { width: 40px; height: 40px; }
+  h1 { margin-top: auto; font-size: 50px; line-height: 1.04; letter-spacing: var(--tracking-display); }
+  p { margin-top: 20px; font-size: 21px; color: var(--ink-2); line-height: 1.45; max-width: 25ch; }
+  .facts { display: flex; gap: 8px; margin-top: 28px; }
+  .facts span { padding: 8px 14px; border-radius: var(--r-full); background: var(--bg-raised); font-size: 15px; font-weight: 550; }
+  .tile { display: flex; flex-direction: column; gap: 12px; padding: 12px; border-radius: var(--r-xl); background: var(--bg-raised); }
+  .stage { position: relative; flex: 1; border-radius: var(--r-md); overflow: hidden; background: var(--stage); }
+  .stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .line { position: absolute; top: 0; bottom: 0; left: 52%; width: 2px; margin-left: -1px; background: var(--accent); }
+  .handle { position: absolute; top: 50%; left: 50%; width: 40px; height: 40px; border-radius: 50%; transform: translate(-50%, -50%); background: var(--bg-raised); box-shadow: var(--shadow-float); display: grid; place-items: center; }
+  .handle svg { width: 20px; height: 20px; fill: none; stroke: var(--ink); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .chip { position: absolute; top: 14px; display: flex; gap: 8px; align-items: center; height: 32px; padding: 0 14px; border-radius: var(--r-full); background: var(--bg-raised); font-size: 14px; color: var(--ink-2); box-shadow: var(--shadow-panel); }
+  .chip b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .l { left: 14px; } .r { right: 14px; }
+  .row { display: grid; grid-template-columns: 44px 1fr auto auto; gap: 14px; align-items: center; padding: 8px 14px 8px 8px; border-radius: var(--r-md); background: var(--bg); font-size: 15px; }
+  .row img { width: 44px; height: 44px; border-radius: var(--r-xs); object-fit: cover; }
+  .row .n { font-weight: 550; display: grid; } .row .n small { font-size: 13px; color: var(--ink-3); font-weight: 450; }
+  .row .s { display: grid; justify-items: end; font-variant-numeric: tabular-nums; font-weight: 550; } .row .s small { font-size: 13px; color: var(--ink-3); font-weight: 450; }
+  .d { padding: 3px 10px; border-radius: var(--r-full); background: var(--good-soft); color: var(--good); font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+  <div class="copy">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#111214"/><path d="M8 14.5V9.5A1.5 1.5 0 0 1 9.5 8h5M24 17.5v5a1.5 1.5 0 0 1-1.5 1.5h-5" fill="none" stroke="#f6f6f4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="13" y="13" width="6" height="6" rx="1.5" fill="#2f5cff"/></svg>
+      Pinch
+    </div>
+    <h1>Smaller images,<br>made on your device.</h1>
+    <p>Compress, convert and upscale in the browser. Nothing is uploaded.</p>
+    <div class="facts"><span>JPG</span><span>PNG</span><span>WebP</span><span>AVIF</span><span>HEIC</span></div>
+  </div>
+  <div class="tile">
+    <div class="stage">
+      <img src="../assets/samples/p989.jpg" alt="">
+      <div class="line"><span class="handle"><svg viewBox="0 0 20 20"><path d="M8 6.5 4.5 10 8 13.5M12 6.5l3.5 3.5-3.5 3.5"/></svg></span></div>
+      <span class="chip l">Original <b>292 KB</b></span>
+      <span class="chip r">WebP <b>151 KB</b></span>
+    </div>
+    <div class="row">
+      <img src="../assets/samples/p266.jpg" alt="">
+      <span class="n">harbour.avif<small>2400 × 1600</small></span>
+      <span class="s">196 KB<small>428 KB</small></span>
+      <span class="d">−54%</span>
+    </div>
+  </div>
+</body>
+</html>

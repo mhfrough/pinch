@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pinch</title>
+  <meta name="description" content="Compress, convert and upscale images in your browser. JPG, PNG, WebP and AVIF, batch saving as a ZIP and a target file size. Nothing is uploaded, no account, no limits.">
+  <link rel="canonical" href="https://mhfrough.github.io/pinch/">
+  <meta name="theme-color" content="#f6f6f4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0c0d0f" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Pinch">
+  <meta property="og:title" content="Pinch: compress, convert and upscale images in your browser">
+  <meta property="og:description" content="Smaller JPG, PNG, WebP and AVIF files, made on your own device. Nothing is uploaded.">
+  <meta property="og:url" content="https://mhfrough.github.io/pinch/">
+  <meta property="og:image" content="https://mhfrough.github.io/pinch/assets/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="The Pinch studio comparing a photo before and after compression.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Pinch: compress, convert and upscale images in your browser">
+  <meta name="twitter:description" content="Smaller JPG, PNG, WebP and AVIF files, made on your own device. Nothing is uploaded.">
+  <meta name="twitter:image" content="https://mhfrough.github.io/pinch/assets/og-image.jpg">
+
+  <script>
+    try {
+      var t = localStorage.getItem('pinch-theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  </script>
+
+  <link rel="preconnect" href="https://api.github.com" crossorigin>
+  <link rel="preload" href="assets/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-sun" viewBox="0 0 20 20"><circle cx="10" cy="10" r="3.25"/><path d="M10 2.75v1.5M10 15.75v1.5M2.75 10h1.5M15.75 10h1.5M4.87 4.87l1.06 1.06M14.07 14.07l1.06 1.06M4.87 15.13l1.06-1.06M14.07 5.93l1.06-1.06"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 20 20"><path d="M16.25 12.1A6.75 6.75 0 0 1 7.9 3.75a6.75 6.75 0 1 0 8.35 8.35Z"/></symbol>
+    <symbol id="i-auto" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6.75"/><path d="M10 3.25a6.75 6.75 0 0 1 0 13.5Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 20 20"><path d="M3.75 7.25h12.5M3.75 12.75h12.5"/></symbol>
+    <symbol id="i-close" viewBox="0 0 20 20"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/></symbol>
+    <symbol id="i-check" viewBox="0 0 20 20"><path d="M5 10.5l3 3 7-7"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 20 20"><path d="M5.5 10h9"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 20 20"><path d="M10 4.5v11M4.5 10h11"/></symbol>
+    <symbol id="i-up" viewBox="0 0 20 20"><path d="M10 15.5v-11M5.5 9 10 4.5 14.5 9"/></symbol>
+    <symbol id="i-save" viewBox="0 0 20 20"><path d="M10 3.5v9M6.25 9 10 12.75 13.75 9M4 16.25h12"/></symbol>
+    <symbol id="i-pulse" viewBox="0 0 20 20"><path d="M2.75 10h3l2-5 4 10 2-5h3.5"/></symbol>
+    <symbol id="i-offline" viewBox="0 0 20 20"><path d="M3.5 3.5l13 13M10 15.25h.01M7.6 12.75a3.5 3.5 0 0 1 3.9-.6M5.1 10.1a7 7 0 0 1 2.6-1.5M12.4 8.7a7 7 0 0 1 2.5 1.4M2.6 7.4a10.5 10.5 0 0 1 2.7-1.8M9.1 4.8a10.5 10.5 0 0 1 8.3 2.6"/></symbol>
+    <symbol id="i-code" viewBox="0 0 20 20"><path d="M7 6 3 10l4 4M13 6l4 4-4 4"/></symbol>
+    <symbol id="i-drag" viewBox="0 0 20 20"><path d="M8 6.5 4.5 10 8 13.5M12 6.5l3.5 3.5-3.5 3.5"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 20 20"><path d="M10 3.75 17.25 16H2.75L10 3.75ZM10 8.5v3.25M10 13.9h.01"/></symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path fill="currentColor" stroke="none" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></symbol>
+  </svg>
+
+  <a class="skip" href="#studio">Skip to the studio</a>
+
+  <header class="bar" id="bar">
+    <div class="bar-in">
+      <a class="brand" href="#studio" aria-label="Pinch, back to the studio">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" class="brand-tile"/><path d="M8 14.5V9.5A1.5 1.5 0 0 1 9.5 8h5M24 17.5v5a1.5 1.5 0 0 1-1.5 1.5h-5" class="brand-corners"/><rect x="13" y="13" width="6" height="6" rx="1.5" class="brand-dot"/></svg>
+        <span class="brand-name">Pinch</span>
+      </a>
+
+      <nav class="nav" aria-label="Sections">
+        <ul class="nav-list" id="nav-list">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#formats">Formats</a></li>
+          <li><a href="#privacy">Privacy</a></li>
+          <li><a href="#questions">Questions</a></li>
+        </ul>
+      </nav>
+
+      <div class="bar-tools">
+        <button class="tool" id="theme" type="button" aria-label="Theme: match the system. Switch to light.">
+          <svg class="ico" aria-hidden="true"><use href="#i-auto"/></svg>
+        </button>
+        <a class="star" id="starLink" href="https://github.com/mhfrough/pinch" target="_blank" rel="noopener">
+          <svg class="star-mark" viewBox="0 0 256 256" aria-hidden="true"><path d="M208.31 75.68A59.78 59.78 0 0 0 202.93 28 8 8 0 0 0 196 24a59.75 59.75 0 0 0-48 24h-24a59.75 59.75 0 0 0-48-24 8 8 0 0 0-6.93 4 59.78 59.78 0 0 0-5.38 47.68A58.14 58.14 0 0 0 56 104v8a56.06 56.06 0 0 0 48.44 55.47A39.8 39.8 0 0 0 96 192v8H72a24 24 0 0 1-24-24 40 40 0 0 0-40-40 8 8 0 0 0 0 16 24 24 0 0 1 24 24 40 40 0 0 0 40 40h24v16a8 8 0 0 0 16 0v-40a24 24 0 0 1 48 0v40a8 8 0 0 0 16 0v-40a39.8 39.8 0 0 0-8.44-24.53A56.06 56.06 0 0 0 216 112v-8a58.14 58.14 0 0 0-7.69-28.32ZM200 112a40 40 0 0 1-40 40h-48a40 40 0 0 1-40-40v-8a41.74 41.74 0 0 1 6.9-22.48 8 8 0 0 0 1.1-7.69 43.81 43.81 0 0 1 .79-33.58 43.88 43.88 0 0 1 32.32 20.06 8 8 0 0 0 6.71 3.69h32.35a8 8 0 0 0 6.74-3.69 43.87 43.87 0 0 1 32.32-20.06 43.81 43.81 0 0 1 .77 33.58 8.09 8.09 0 0 0 1 7.65 41.72 41.72 0 0 1 7 22.52Z"/></svg><span class="star-text">Star</span><span class="vh"> on GitHub</span><span class="vh star-sr"></span><span class="star-n num" id="starCount" aria-hidden="true"></span>
+        </a>
+        <button class="tool menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="menu" aria-label="Open the menu">
+          <svg class="ico" aria-hidden="true"><use href="#i-menu"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="menu" id="menu" hidden>
+      <a href="#features">Features</a>
+      <a href="#formats">Formats</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#questions">Questions</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section id="studio" aria-label="Pinch studio"></section>
+
+    <!-- ============================================================ features -->
+    <section class="sec" id="features" aria-labelledby="features-title">
+      <div class="wrap">
+        <header class="sec-head" data-reveal>
+          <h2 id="features-title">Smaller files, the right format, the right size.</h2>
+          <p>Every change shows the new file size straight away, so you know what you will get before you save.</p>
+        </header>
+
+        <div class="bento">
+          <!-- compare -->
+          <article class="tile t-compare" data-reveal>
+            <div class="well cmp" data-ui>
+              <div class="cmp-stage" id="cmp" style="--pos: 50%; --zoom: 1">
+                <div class="cmp-layer"><img src="assets/samples/p989.jpg" alt="" width="2400" height="1600" decoding="async"></div>
+                <div class="cmp-layer cmp-after"><img src="assets/samples/p989.jpg" alt="" width="2400" height="1600" decoding="async"></div>
+                <div class="cmp-line" role="slider" tabindex="0" aria-label="Compare original and WebP" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-valuetext="50 percent">
+                  <span class="cmp-handle"><svg class="ico" aria-hidden="true"><use href="#i-drag"/></svg></span>
+                </div>
+                <span class="chip chip-l">Original <span class="num" data-m="cmp-in">292 KB</span></span>
+                <span class="chip chip-r" id="cmp-chip" hidden>WebP <span class="num" id="cmp-out">63 KB</span></span>
+                <div class="zoom" role="group" aria-label="Zoom">
+                  <button type="button" data-zoom="-1" aria-label="Zoom out"><svg class="ico" aria-hidden="true"><use href="#i-minus"/></svg></button>
+                  <span class="num" id="zoom-out" aria-live="polite">100%</span>
+                  <button type="button" data-zoom="1" aria-label="Zoom in"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></button>
+                </div>
+              </div>
+            </div>
+            <div class="tile-copy">
+              <h3>Compare before you save</h3>
+              <p>Drag the line across the picture and zoom in to check the detail. <span id="cmp-claim"></span></p>
+            </div>
+          </article>
+
+          <!-- compress -->
+          <article class="tile t-quality" data-reveal>
+            <div class="well" data-ui>
+              <div class="ui-pad">
+                <label class="ui-row" for="q-range"><span class="ui-label">Quality</span><output class="ui-value num" id="q-value" for="q-range">75</output></label>
+                <input class="ui-range" id="q-range" type="range" min="40" max="95" step="5" value="75">
+                <div class="ui-file">
+                  <img class="ui-thumb" src="assets/samples/p11.jpg" alt="" width="40" height="40" decoding="async">
+                  <span class="ui-file-name">valley.webp<span class="ui-sub num" id="q-sub">2400 × 1600</span></span>
+                  <span class="ui-size num"><span class="ui-was" data-m="q-in">353 KB</span><span class="ui-now" id="q-now">198 KB</span></span>
+                  <span class="delta num" id="q-delta">−44%</span>
+                </div>
+              </div>
+            </div>
+            <div class="tile-copy">
+              <h3>Compress</h3>
+              <p>Move the slider and watch the size. If a file would come out larger, Pinch says so and keeps your original.</p>
+            </div>
+          </article>
+
+          <!-- convert -->
+          <article class="tile t-convert" data-reveal>
+            <div class="well" data-ui>
+              <div class="ui-pad">
+                <div class="ui-row"><span class="ui-label">Save as</span></div>
+                <div class="seg seg-wrap" role="group" aria-label="Format" id="fmt-seg">
+                  <button type="button" data-fmt="jpeg" aria-pressed="false">JPG</button>
+                  <button type="button" data-fmt="png" aria-pressed="false">PNG</button>
+                  <button type="button" data-fmt="webp" aria-pressed="false">WebP</button>
+                  <button type="button" data-fmt="avif" aria-pressed="true">AVIF</button>
+                </div>
+                <div class="ui-file">
+                  <img class="ui-thumb" src="assets/samples/p266.jpg" alt="" width="40" height="40" decoding="async">
+                  <span class="ui-file-name" id="fmt-name">harbour.avif<span class="ui-sub num">from JPG</span></span>
+                  <span class="ui-size num"><span class="ui-was" data-m="fmt-in">428 KB</span><span class="ui-now" id="fmt-now">196 KB</span></span>
+                  <span class="delta num" id="fmt-delta">−54%</span>
+                </div>
+              </div>
+            </div>
+            <div class="tile-copy">
+              <h3>Convert</h3>
+              <p>JPG, PNG, WebP, AVIF, GIF, BMP and ICO. Transparent parts get a fill colour you pick when the format has no transparency.</p>
+            </div>
+          </article>
+
+          <!-- batch -->
+          <article class="tile t-batch" data-reveal>
+            <div class="well" data-ui>
+              <ul class="ui-list" aria-label="Example batch">
+                <li class="ui-file">
+                  <img class="ui-thumb" src="assets/samples/p11.jpg" alt="" width="40" height="40" decoding="async">
+                  <span class="ui-file-name">valley.webp<span class="ui-sub num">2400 × 1600</span></span>
+                  <span class="ui-size num"><span class="ui-was" data-m="b1-in">353 KB</span><span class="ui-now" data-m="b1-out">198 KB</span></span>
+                  <span class="delta num" data-m="b1-d">−44%</span>
+                </li>
+                <li class="ui-file">
+                  <img class="ui-thumb" src="assets/samples/p266.jpg" alt="" width="40" height="40" decoding="async">
+                  <span class="ui-file-name">harbour.webp<span class="ui-sub num">2400 × 1600</span></span>
+                  <span class="ui-size num"><span class="ui-was" data-m="b2-in">428 KB</span><span class="ui-now" data-m="b2-out">288 KB</span></span>
+                  <span class="delta num" data-m="b2-d">−33%</span>
+                </li>
+                <li class="ui-file">
+                  <img class="ui-thumb" src="assets/samples/p989.jpg" alt="" width="40" height="40" decoding="async">
+                  <span class="ui-file-name">lake.webp<span class="ui-sub num">2400 × 1600</span></span>
+                  <span class="ui-size num"><span class="ui-was" data-m="b3-in">292 KB</span><span class="ui-now" data-m="b3-out">151 KB</span></span>
+                  <span class="delta num" data-m="b3-d">−48%</span>
+                </li>
+                <li class="ui-file">
+                  <img class="ui-thumb" src="assets/samples/p353.jpg" alt="" width="40" height="40" decoding="async">
+                  <span class="ui-file-name">hills.webp<span class="ui-sub num">2400 × 1600</span></span>
+                  <span class="ui-size num"><span class="ui-was" data-m="b4-in">578 KB</span><span class="ui-now" data-m="b4-out">440 KB</span></span>
+                  <span class="delta num" data-m="b4-d">−24%</span>
+                </li>
+              </ul>
+              <div class="ui-foot">
+                <span class="ui-total num"><span data-m="b-count">4 images</span>, <span data-m="b-in">1.61 MB</span> to <strong data-m="b-out">1.05 MB</strong></span>
+                <span class="ui-btn ui-btn-primary"><svg class="ico" aria-hidden="true"><use href="#i-save"/></svg>Save all</span>
+              </div>
+            </div>
+            <div class="tile-copy">
+              <h3>A whole folder at once</h3>
+              <p>Drop forty photos, choose one set of settings, change any single file if it needs it, then save everything as one ZIP.</p>
+            </div>
+          </article>
+
+          <!-- target size -->
+          <article class="tile t-target" data-reveal>
+            <div class="well tgt" data-ui>
+              <div class="tgt-photo"><img src="assets/samples/p353.jpg" alt="" width="2400" height="1600" decoding="async"></div>
+              <div class="ui-pad">
+                <div class="ui-row"><span class="ui-label">Fit under</span></div>
+                <div class="seg" role="group" aria-label="Target size" id="tgt-seg">
+                  <button type="button" data-tgt="50" aria-pressed="false"><span class="num">50 KB</span></button>
+                  <button type="button" data-tgt="100" aria-pressed="true"><span class="num">100 KB</span></button>
+                  <button type="button" data-tgt="200" aria-pressed="false"><span class="num">200 KB</span></button>
+                </div>
+                <div class="ui-result">
+                  <svg class="ico ui-ok" aria-hidden="true"><use href="#i-check"/></svg>
+                  <span class="ui-result-text"><span class="num"><strong id="tgt-bytes">97 KB</strong> <span class="ui-muted">from <span data-m="tgt-in">578 KB</span></span></span><span class="ui-sub-inline num" id="tgt-how">hills.jpg at quality 32, resized to 2040 × 1360</span></span>
+                </div>
+              </div>
+            </div>
+            <div class="tile-copy">
+              <h3>Hit a file size</h3>
+              <p>For forms that say “under 100 KB”. Pinch finds the highest quality that fits, and makes the picture smaller only when it has to.</p>
+            </div>
+          </article>
+
+          <!-- presets -->
+          <article class="tile t-presets" data-reveal>
+            <div class="well" data-ui>
+              <div class="ui-pad ui-pad-tight">
+                <div class="presets" role="radiogroup" aria-label="Presets" id="presets">
+                  <button type="button" role="radio" aria-checked="true"><span class="p-name">Web</span><span class="p-spec num">WebP, quality 75, up to 2560 px</span></button>
+                  <button type="button" role="radio" aria-checked="false"><span class="p-name">Email</span><span class="p-spec num">JPG kept under 1 MB</span></button>
+                  <button type="button" role="radio" aria-checked="false"><span class="p-name">Social</span><span class="p-spec num">JPG, quality 82, 1080 × 1350</span></button>
+                  <button type="button" role="radio" aria-checked="false"><span class="p-name">Favicon</span><span class="p-spec num">ICO with small sizes inside</span></button>
+                  <button type="button" role="radio" aria-checked="false"><span class="p-name">Lossless</span><span class="p-spec num">PNG, every pixel kept</span></button>
+                </div>
+              </div>
+            </div>
+            <div class="tile-copy">
+              <h3>Presets</h3>
+              <p>One click sets format, size and quality for the place the picture is going.</p>
+            </div>
+          </article>
+
+          <!-- upscale -->
+          <article class="tile t-upscale" data-reveal>
+            <div class="well up" data-ui>
+              <div class="ui-pad up-controls">
+                <div class="ui-row"><span class="ui-label">Make larger</span><span class="ui-value num" id="up-dims">600 × 400 to 2400 × 1600</span></div>
+                <div class="seg" role="group" aria-label="Scale" id="up-seg">
+                  <button type="button" data-f="2" aria-pressed="false"><span class="num">2×</span></button>
+                  <button type="button" data-f="3" aria-pressed="false"><span class="num">3×</span></button>
+                  <button type="button" data-f="4" aria-pressed="true"><span class="num">4×</span></button>
+                </div>
+                <div class="seg seg-wrap" role="group" aria-label="Method" id="up-method">
+                  <button type="button" data-m="smooth" aria-pressed="true">Smooth</button>
+                  <button type="button" data-m="sharp" aria-pressed="false">Sharp</button>
+                  <button type="button" data-m="pixel" aria-pressed="false">Pixel</button>
+                  <button type="button" data-m="ai" aria-pressed="false">AI (detail)</button>
+                </div>
+                <p class="ui-note" id="up-note">Even resampling with Lanczos. Good for photos.</p>
+              </div>
+              <figure class="up-view">
+                <canvas class="up-canvas" id="up-canvas" width="90" height="60" aria-hidden="true"></canvas>
+                <figcaption class="chip chip-l" id="up-cap">Smooth preview</figcaption>
+              </figure>
+            </div>
+            <div class="tile-copy">
+              <h3>Upscale</h3>
+              <p>Make a small picture two to four times bigger. Smooth and Sharp resample, Pixel keeps hard edges for pixel art, and AI (detail) runs Real-ESRGAN on your device.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ formats -->
+    <section class="sec" id="formats" aria-labelledby="formats-title">
+      <div class="wrap formats">
+        <header class="sec-head formats-head" data-reveal>
+          <h2 id="formats-title">Opens what your camera makes. Saves what the web wants.</h2>
+          <p>WebP, AVIF, JPG and PNG are saved by encoders that ship with Pinch, so the result is the same in every browser. The marked rows are checked live in the browser you are using now.</p>
+          <ul class="checks-live" aria-label="This browser" id="env">
+            <li data-env="wasm"><span class="dot" aria-hidden="true"></span><span class="env-name">WebAssembly</span><span class="env-val">Checking</span></li>
+            <li data-env="workers"><span class="dot" aria-hidden="true"></span><span class="env-name">Web Workers</span><span class="env-val">Checking</span></li>
+            <li data-env="gpu"><span class="dot" aria-hidden="true"></span><span class="env-name">WebGPU for AI</span><span class="env-val">Checking</span></li>
+          </ul>
+        </header>
+
+        <div class="table-panel" data-reveal>
+          <table class="ftable">
+            <caption class="vh">Image formats Pinch opens and saves</caption>
+            <thead>
+              <tr><th scope="col">Format</th><th scope="col">Opens</th><th scope="col">Saves</th><th scope="col">Best for</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">JPG</th>
+                <td><span class="st st-yes">Yes</span></td>
+                <td><span class="st st-yes">Yes</span><span class="st-note">MozJPEG</span></td>
+                <td>Photos that have to open anywhere</td>
+              </tr>
+              <tr>
+                <th scope="row">PNG</th>
+                <td><span class="st st-yes">Yes</span></td>
+                <td><span class="st st-yes">Yes</span><span class="st-note">Lossless, or fewer colours</span></td>
+                <td>Screenshots, logos and anything see-through</td>
+              </tr>
+              <tr>
+                <th scope="row">WebP</th>
+                <td><span class="st st-yes">Yes</span></td>
+                <td><span class="st st-yes" data-live="save-webp">Yes</span><span class="st-note">libwebp</span></td>
+                <td>Photos and graphics on websites</td>
+              </tr>
+              <tr>
+                <th scope="row">AVIF</th>
+                <td><span class="st st-yes" data-live="open-avif">Yes</span></td>
+                <td><span class="st st-yes" data-live="save-avif">Yes</span><span class="st-note">libavif</span></td>
+                <td>The smallest photos for modern browsers</td>
+              </tr>
+              <tr>
+                <th scope="row">GIF</th>
+                <td><span class="st st-part">First frame</span></td>
+                <td><span class="st st-yes">Yes</span><span class="st-note">256 colours</span></td>
+                <td>Old apps and email</td>
+              </tr>
+              <tr>
+                <th scope="row">BMP</th>
+                <td><span class="st st-yes">Yes</span></td>
+                <td><span class="st st-yes">Yes</span></td>
+                <td>Older Windows software</td>
+              </tr>
+              <tr>
+                <th scope="row">ICO</th>
+                <td><span class="st st-yes">Yes</span></td>
+                <td><span class="st st-yes">Yes</span><span class="st-note">16 to 256 px</span></td>
+                <td>Website and app icons</td>
+              </tr>
+              <tr>
+                <th scope="row">SVG</th>
+                <td><span class="st st-yes">Yes</span></td>
+                <td><span class="st st-no">No</span></td>
+                <td>Turning a drawing into pixels</td>
+              </tr>
+              <tr>
+                <th scope="row">HEIC</th>
+                <td><span class="st st-part" data-live="open-heic">Checking</span></td>
+                <td><span class="st st-no">No</span></td>
+                <td>iPhone photos, to turn into JPG or WebP</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ privacy -->
+    <section class="sec" id="privacy" aria-labelledby="privacy-title">
+      <div class="wrap privacy">
+        <div class="privacy-copy" data-reveal>
+          <h2 id="privacy-title">Your images stay on this device. You can check.</h2>
+          <p class="lead">Pinch is a web page that does all its work on your computer or phone. There is no server to send pictures to, no account to make and no daily limit.</p>
+          <ul class="steps">
+            <li>
+              <span class="step-ico" aria-hidden="true"><svg class="ico"><use href="#i-pulse"/></svg></span>
+              <span><strong>Watch the network.</strong> Open your browser’s developer tools, choose Network, then add an image. Nothing goes out.</span>
+            </li>
+            <li>
+              <span class="step-ico" aria-hidden="true"><svg class="ico"><use href="#i-offline"/></svg></span>
+              <span><strong>Switch off Wi-Fi.</strong> Once the page has loaded, compressing, converting and resizing keep working with no connection. AI upscaling needs its model, downloaded from this site once.</span>
+            </li>
+            <li>
+              <span class="step-ico" aria-hidden="true"><svg class="ico"><use href="#i-code"/></svg></span>
+              <span><strong>Read the code.</strong> Every line is <a href="https://github.com/mhfrough/pinch">on GitHub</a> under the MIT licence.</span>
+            </li>
+          </ul>
+          <p class="privacy-note">One small exception, so you know: the star count on the GitHub button at the top comes from GitHub’s public API, fetched at most once every five minutes. It asks for a number and never sends images or anything about them.</p>
+        </div>
+
+        <aside class="meter" data-ui data-reveal aria-labelledby="meter-title">
+          <div class="meter-top">
+            <h3 class="meter-title" id="meter-title">Network requests since you added an image</h3>
+            <span class="conn" id="conn"><span class="dot" aria-hidden="true"></span><span id="conn-label">Online</span></span>
+          </div>
+          <p class="meter-count num" id="net-count" aria-live="polite">0</p>
+          <dl class="meter-stats">
+            <div><dt>Sent to other sites</dt><dd class="num" id="net-other">0</dd></div>
+            <div><dt>Images added</dt><dd class="num" id="net-images">0</dd></div>
+          </dl>
+          <div class="meter-log">
+            <p class="meter-empty" id="net-empty">Counting starts when you add your first image at the top of the page.</p>
+            <ul class="meter-list" id="net-list" hidden></ul>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============================================================ engine -->
+    <section class="sec" id="engine" aria-labelledby="engine-title">
+      <div class="wrap engine">
+        <header class="sec-head" data-reveal>
+          <h2 id="engine-title">Under the hood</h2>
+          <p>Well-known open source codecs, compiled to WebAssembly. Each one runs in a Web Worker, so the page stays smooth while it works.</p>
+        </header>
+        <dl class="spec" data-reveal>
+          <div><dt>MozJPEG</dt><dd>Smaller JPG files at the same quality</dd></div>
+          <div><dt>libwebp</dt><dd>WebP, lossy and lossless</dd></div>
+          <div><dt>libavif</dt><dd>AVIF, the smallest photos</dd></div>
+          <div><dt>libheif</dt><dd>HEIC photos from iPhones</dd></div>
+          <div><dt>OxiPNG</dt><dd>Lossless PNG, squeezed further</dd></div>
+          <div><dt>gifenc</dt><dd>GIF with a 256-colour palette</dd></div>
+          <div><dt>Lanczos and Magic Kernel</dt><dd>Clean resizing, up and down</dd></div>
+          <div><dt>Real-ESRGAN</dt><dd>AI upscaling, on WebGPU when there is one</dd></div>
+        </dl>
+        <p class="engine-foot" data-reveal>Pinch itself is open source under the MIT licence. <a href="https://github.com/mhfrough/pinch">Read it on GitHub</a>.</p>
+      </div>
+    </section>
+
+    <!-- ============================================================ keys -->
+    <section class="sec" id="keys" aria-labelledby="keys-title">
+      <div class="wrap keys">
+        <div class="keys-copy" data-reveal>
+          <h2 id="keys-title">Your hands can stay on the keyboard.</h2>
+          <p>Every common step has a key. Press <kbd>?</kbd> in the studio to bring up this list whenever you need it.</p>
+        </div>
+        <div class="sheet" data-ui data-reveal role="group" aria-labelledby="sheet-title">
+          <div class="sheet-head">
+            <h3 id="sheet-title">Keyboard shortcuts</h3>
+            <span class="sheet-x" aria-hidden="true"><svg class="ico"><use href="#i-close"/></svg></span>
+          </div>
+          <dl class="sheet-list">
+            <div><dt><kbd>O</kbd></dt><dd>Open images</dd></div>
+            <div><dt><kbd>S</kbd></dt><dd>Save this image</dd></div>
+            <div><dt><kbd>Shift</kbd><kbd>S</kbd></dt><dd>Save all as ZIP</dd></div>
+            <div><dt><kbd>[</kbd><kbd>]</kbd></dt><dd>Previous or next file</dd></div>
+            <div><dt><kbd>Space</kbd></dt><dd>Hold to show the original</dd></div>
+            <div><dt><kbd>F</kbd></dt><dd>Fit to view</dd></div>
+            <div><dt><kbd>1</kbd></dt><dd>Actual size</dd></div>
+            <div><dt><kbd>+</kbd><kbd>−</kbd></dt><dd>Zoom in or out</dd></div>
+            <div><dt><kbd>Delete</kbd></dt><dd>Remove this file</dd></div>
+            <div><dt><kbd>?</kbd></dt><dd>Show this list</dd></div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ questions -->
+    <section class="sec" id="questions" aria-labelledby="questions-title">
+      <div class="wrap faq">
+        <header class="sec-head faq-head" data-reveal>
+          <h2 id="questions-title">Questions</h2>
+          <p>Something else? <a href="https://github.com/mhfrough/pinch/issues">Ask on GitHub</a>.</p>
+        </header>
+        <div class="faq-list" data-reveal>
+          <details>
+            <summary>Are my images uploaded anywhere?<svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></summary>
+            <div class="faq-a"><p>No. Your images are read from your device, processed inside this browser tab and saved back to your device. There is no server that receives them. You can watch the Network tab in your browser’s developer tools to confirm it, or switch off Wi-Fi once the page has loaded. The one download you may see later is the AI upscaling model, fetched from this site the first time you use it. It comes to you; nothing goes back. The only other site the page contacts is GitHub’s public API, to show the star count on the top bar.</p></div>
+          </details>
+          <details>
+            <summary>How much smaller will my images get?<svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></summary>
+            <div class="faq-a"><p data-m="faq-sizes">It depends on the picture. The four sample photos on this page are already compressed JPGs, and the Web preset (WebP at quality 75) still made them 24% to 48% smaller. AVIF goes further: the harbour photo came out 54% smaller. Photos straight from a phone camera start out much larger, so they usually have more to lose. Pinch shows the exact size of every file before you save.</p></div>
+          </details>
+          <details>
+            <summary>Does AI upscaling invent detail?<svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></summary>
+            <div class="faq-a"><p>Yes, in a way. Real-ESRGAN learned what sharp photos tend to look like and draws edges and texture that fit. The result usually looks crisper than plain resizing, but the new detail is a good guess, not information recovered from your file. Don’t rely on it where accuracy matters, such as faces in evidence, small text or number plates. Smooth, Sharp and Pixel only enlarge what is already there.</p></div>
+          </details>
+          <details>
+            <summary>Can I open iPhone HEIC photos?<svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></summary>
+            <div class="faq-a"><p data-live="faq-heic">Yes. Pinch comes with a HEIC decoder (libheif, compiled to WebAssembly), so iPhone photos open in any current browser, not just Safari. Save them as JPG to share anywhere, or as WebP or AVIF to make them much smaller.</p></div>
+          </details>
+          <details>
+            <summary>Which browsers work?<svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></summary>
+            <div class="faq-a"><p>Current versions of Chrome, Edge, Firefox and Safari, on computers and phones. AI upscaling is fastest where WebGPU is available, and falls back to WebAssembly, which is slower, everywhere else.</p></div>
+          </details>
+          <details>
+            <summary>Is there a limit?<svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></summary>
+            <div class="faq-a"><p data-m="faq-limit">No daily limit, no file count limit and no watermark. The only limit is your device’s memory: very large pictures, above about 40 megapixels, are refused so the tab doesn’t run out of memory.</p></div>
+          </details>
+          <details>
+            <summary>Is it really free?<svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></summary>
+            <div class="faq-a"><p>Yes. There are no ads, no account, no paid tier and nothing to install. It costs nothing to run because your device does the work.</p></div>
+          </details>
+          <details>
+            <summary>Is Pinch open source?<svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg></summary>
+            <div class="faq-a"><p>Yes, under the MIT licence. The code is at <a href="https://github.com/mhfrough/pinch">github.com/mhfrough/pinch</a>. The encoders it uses are open source too, each under its own licence.</p></div>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================================================ footer -->
+  <footer class="foot">
+    <div class="wrap">
+      <div class="foot-close" data-reveal>
+        <div class="foot-main">
+          <svg class="foot-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" class="brand-tile"/><path d="M8 14.5V9.5A1.5 1.5 0 0 1 9.5 8h5M24 17.5v5a1.5 1.5 0 0 1-1.5 1.5h-5" class="brand-corners"/><rect x="13" y="13" width="6" height="6" rx="1.5" class="brand-dot"/></svg>
+          <p class="foot-line">Smaller images, made on your own device.</p>
+          <div class="foot-actions">
+            <a class="btn btn-ink btn-lg" href="#studio"><svg class="ico" aria-hidden="true"><use href="#i-up"/></svg>Back to the studio</a>
+            <a class="btn btn-quiet btn-lg" href="https://github.com/mhfrough/pinch"><svg class="ico ico-fill" aria-hidden="true"><use href="#i-github"/></svg>Source on GitHub</a>
+          </div>
+        </div>
+        <dl class="foot-facts">
+          <div><dt>Uploads</dt><dd class="num">0 bytes</dd></div>
+          <div><dt>Account</dt><dd>None</dd></div>
+          <div><dt>Daily limit</dt><dd>None</dd></div>
+          <div><dt>Price</dt><dd>Free</dd></div>
+          <div><dt>Licence</dt><dd>MIT</dd></div>
+        </dl>
+      </div>
+      <div class="foot-fine">
+        <p>Made by Mohammad Hamza. MIT licence, 2026.</p>
+        <p>Sample photos from Unsplash: Paul Jarvis (valley, lake), John Maravelakis (harbour), Forrest Cavale (hills), via picsum.photos.</p>
+        <p>Geist by Vercel, SIL OFL 1.1. Codecs: MozJPEG, libwebp, libavif, libheif, OxiPNG, gifenc, Squoosh resizers via jSquash, Real-ESRGAN on ONNX Runtime Web, each under its own licence.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="engine.js"></script>
+  <script src="ai/ai.js" defer></script>
+  <script src="app.js"></script>
+  <script src="site.js"></script>
+</body>
+</html>

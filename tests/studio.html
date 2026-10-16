@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pinch studio harness</title>
+<script>
+  // ?theme=light|dark mirrors the landing page's theme toggle (data-theme on <html>)
+  (function () { var m = /[?&]theme=(light|dark)/.exec(location.search); if (m) document.documentElement.dataset.theme = m[1]; })();
+</script>
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../app.css">
+<style>
+  /* stand-in for the landing agent's 56px top bar, so the studio sits where it will on the real page */
+  .harness-bar { position: sticky; top: 0; z-index: 50; height: 56px; display: flex; align-items: center; gap: 8px; padding: 0 var(--gutter); background: var(--bg); font-weight: 600; letter-spacing: var(--tracking-title); }
+  .harness-bar small { font-weight: 450; color: var(--ink-3); font-size: var(--text-sm); }
+  .harness-after { height: 50vh; }
+</style>
+</head>
+<body>
+<header class="harness-bar">Pinch <small>studio harness</small></header>
+<main>
+  <section id="studio" aria-label="Pinch studio"></section>
+  <div class="harness-after"></div>
+</main>
+<script src="../engine.js"></script>
+<script src="../ai/ai.js" defer onerror="this.remove()"></script>
+<script src="../app.js" defer></script>
+</body>
+</html>

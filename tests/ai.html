@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinch AI tests</title>
+<link rel="icon" href="data:,">
+<style>
+  body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; background: #fff; color: #111; }
+  pre { white-space: pre-wrap; }
+</style>
+<script src="../ai/ai.js"></script>
+</head>
+<body>
+<h1>Pinch AI tests</h1>
+<p>Driven by <code>tests/run-ai-tests.mjs</code>. Open with <code>?run</code> to run here.</p>
+<pre id="log"></pre>
+<script type="module">
+import { resample } from '../ai/resample.js';
+
+const log = (s) => { document.getElementById('log').textContent += s + '\n'; };
+
+function canvasOf(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+const toBlob = (c, type = 'image/png') => new Promise((r) => c.toBlob(r, type));
+
+async function pixels(blob) {
+  const bmp = await createImageBitmap(blob, { premultiplyAlpha: 'none' });
+  const c = canvasOf(bmp.width, bmp.height);
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(bmp, 0, 0);
+  return { w: bmp.width, h: bmp.height, data: ctx.getImageData(0, 0, bmp.width, bmp.height).data };
+}
+
+// 320x213 crop of the lake sample at native resolution: treeline, gorse and rocky shore.
+async function sampleCrop() {
+  const res = await fetch('../assets/samples/p989.jpg');
+  const bmp = await createImageBitmap(await res.blob());
+  const c = canvasOf(320, 213);
+  c.getContext('2d').drawImage(bmp, 560, 1180, 320, 213, 0, 0, 320, 213);
+  return toBlob(c);
+}
+
+// 96x64 PNG: transparent background, an opaque disc with a soft edge, and a half-transparent bar.
+async function alphaPng() {
+  const c = canvasOf(96, 64);
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(40, 32, 18, 40, 32, 26);
+  g.addColorStop(0, 'rgba(230,80,30,1)');
+  g.addColorStop(1, 'rgba(230,80,30,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(40, 32, 26, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(20,90,220,0.5)';
+  ctx.fillRect(70, 8, 16, 48);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 14px sans-serif';
+  ctx.fillText('Pi', 32, 37);
+  return toBlob(c);
+}
+
+async function bigBlank(w, h) { return toBlob(canvasOf(w, h)); }
+
+function alphaAt(p, x, y) { return p.data[(y * p.w + x) * 4 + 3]; }
+
+function lanczosUp(p, s) {
+  const out = resample(p.data, p.w, p.h, 4, p.w * s, p.h * s);
+  return new Uint8ClampedArray(out);
+}
+
+async function upscaleTimed(blob, scale, backend) {
+  const fractions = [];
+  const labels = new Set();
+  const t0 = performance.now();
+  const out = await PinchAI.upscale(blob, { scale, backend, onProgress: (f, l) => { fractions.push(f); labels.add(l); } });
+  const ms = Math.round(performance.now() - t0);
+  const p = await pixels(out);
+  return {
+    type: out.type, bytes: out.size, w: p.w, h: p.h, ms, p,
+    progressEnd: fractions[fractions.length - 1], progressCount: fractions.length,
+    monotonic: fractions.every((f, i) => i === 0 || f >= fractions[i - 1]),
+    labels: [...labels], run: PinchAI.lastRun
+  };
+}
+
+function strip(r) { const { p, ...rest } = r; return rest; }
+
+// Mean absolute difference of alpha between AI output and a Lanczos upscale of the input alpha.
+function alphaDiff(out, ref, s) {
+  const up = lanczosUp(ref, s);
+  let sum = 0, max = 0;
+  for (let i = 3; i < up.length; i += 4) { const d = Math.abs(up[i] - out.data[i]); sum += d; if (d > max) max = d; }
+  return { mean: +(sum / (up.length / 4)).toFixed(3), max };
+}
+
+// Gradient energy: higher means more fine detail / sharper edges.
+function sharpness(data, w, h) {
+  let s = 0;
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = (y * w + x) * 4;
+    const l = (k) => 0.299 * data[k] + 0.587 * data[k + 1] + 0.114 * data[k + 2];
+    const gx = l(i + 4) - l(i - 4), gy = l(i + w * 4) - l(i - w * 4);
+    s += gx * gx + gy * gy;
+  }
+  return +(s / ((w - 2) * (h - 2))).toFixed(1);
+}
+
+async function compareImage(cropBlob, aiBlob) {
+  const src = await pixels(cropBlob);
+  const ai = await pixels(aiBlob);
+  const S = 4;
+  // Region of the x4 output shown at 1:1 (source region 100x80 at 110,60).
+  const rx = 110, ry = 60, rw = 100, rh = 80;
+  const W = rw * S, H = rh * S, gap = 12, top = 28;
+  const lz = lanczosUp(src, S);
+  const panels = [
+    ['Nearest neighbour', (x, y, i) => { const j = ((ry + (y / S | 0)) * src.w + rx + (x / S | 0)) * 4; return [src.data[j], src.data[j + 1], src.data[j + 2]]; }],
+    ['Lanczos 3', (x, y) => { const j = ((ry * S + y) * src.w * S + rx * S + x) * 4; return [lz[j], lz[j + 1], lz[j + 2]]; }],
+    ['AI (Real-ESRGAN)', (x, y) => { const j = ((ry * S + y) * ai.w + rx * S + x) * 4; return [ai.data[j], ai.data[j + 1], ai.data[j + 2]]; }]
+  ];
+  const c = canvasOf(W * 3 + gap * 2, H + top);
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+  const scores = {};
+  panels.forEach(([name, get], k) => {
+    const img = ctx.createImageData(W, H);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const [r, g, b] = get(x, y); const o = (y * W + x) * 4;
+      img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = 255;
+    }
+    ctx.putImageData(img, k * (W + gap), top);
+    scores[name] = sharpness(img.data, W, H);
+    ctx.fillStyle = '#111'; ctx.font = '600 16px system-ui, sans-serif';
+    ctx.fillText(name + ' (4x)', k * (W + gap) + 4, 19);
+  });
+  return { dataUrl: c.toDataURL('image/png'), sharpness: scores };
+}
+
+window.runAiTests = async function (opts = {}) {
+  const backend = opts.backend || 'wasm';
+  const R = { backend, available: await PinchAI.available() };
+  log('available: ' + JSON.stringify(R.available));
+  const crop = await sampleCrop();
+  const alpha = await alphaPng();
+  const alphaPx = await pixels(alpha);
+
+  // Cold start (engine + model) is included in the first run.
+  const x4 = await upscaleTimed(crop, 4, backend);
+  R.photo_x4 = strip(x4); log('photo x4: ' + JSON.stringify(R.photo_x4));
+  const x2 = await upscaleTimed(crop, 2, backend);
+  R.photo_x2 = strip(x2); log('photo x2: ' + JSON.stringify(R.photo_x2));
+  R.cachedAfterRun = !!(await (await caches.open('pinch-ai-v1')).match(new URL('../ai/models/realesr-general-x4v3.onnx', location.href).href));
+
+  for (const s of [2, 4]) {
+    const r = await upscaleTimed(alpha, s, backend);
+    const corner = alphaAt(r.p, 1, 1);
+    const centre = alphaAt(r.p, 40 * s, 32 * s);
+    const bar = alphaAt(r.p, 78 * s, 30 * s);
+    const ci = (32 * s * r.p.w + 40 * s) * 4;
+    R['alpha_x' + s] = {
+      ...strip(r), cornerAlpha: corner, centreAlpha: centre, barAlpha: bar,
+      inputBarAlpha: alphaAt(alphaPx, 78, 30),
+      centreRGB: [r.p.data[ci], r.p.data[ci + 1], r.p.data[ci + 2]],
+      alphaVsLanczos: alphaDiff(r.p, alphaPx, s)
+    };
+    log(`alpha x${s}: ` + JSON.stringify(R['alpha_x' + s]));
+  }
+
+  // Cancel: abort as soon as the first tile is under way.
+  {
+    const ctrl = new AbortController();
+    let abortedAt = 0, errName = null, sawTile = false;
+    const t0 = performance.now();
+    try {
+      await PinchAI.upscale(crop, {
+        scale: 4, backend, signal: ctrl.signal,
+        onProgress: (f, l) => { if (!sawTile && /tile/i.test(l)) { sawTile = true; abortedAt = performance.now(); ctrl.abort(); } }
+      });
+    } catch (e) { errName = e.name; }
+    const rejectMs = Math.round(performance.now() - abortedAt);
+    // Still works afterwards (fresh worker, model from cache).
+    const after = await upscaleTimed(alpha, 2, backend);
+    R.cancel = { errName, sawTile, rejectMsAfterAbort: rejectMs, totalMs: Math.round(performance.now() - t0), afterwardsOk: after.w === 192 && after.h === 128, afterwardsMs: after.ms };
+    log('cancel: ' + JSON.stringify(R.cancel));
+  }
+  // Pre-aborted signal.
+  {
+    const ctrl = new AbortController(); ctrl.abort();
+    let name = null; try { await PinchAI.upscale(alpha, { scale: 2, signal: ctrl.signal }); } catch (e) { name = e.name; }
+    R.preAborted = name;
+  }
+  // Size cap.
+  {
+    const big = await bigBlank(1100, 1000);
+    let err = null; try { await PinchAI.upscale(big, { scale: 4, backend }); } catch (e) { err = { name: e.name, code: e.code, message: e.message }; }
+    R.tooLarge = err; log('too large: ' + JSON.stringify(err));
+    let ok2 = null; // the same image fits at 2x? 2200x2000 = 4.4 MP: allowed (not run, just checked by the cap maths)
+    R.tooLargeHint2x = !!(err && /Try 2x/.test(err.message));
+  }
+  // Bad scale.
+  { let n = null; try { await PinchAI.upscale(alpha, { scale: 3 }); } catch (e) { n = e.name; } R.badScale = n; }
+
+  const cmp = await compareImage(crop, await PinchAI.upscale(crop, { scale: 4, backend }));
+  R.compareSharpness = cmp.sharpness;
+  R.compareDataUrl = cmp.dataUrl;
+  log('sharpness: ' + JSON.stringify(cmp.sharpness));
+  return R;
+};
+
+// Times one backend on the crop (cold = engine start + model + run), then checks its x4 output
+// against the WASM backend's output for the same input.
+window.timeBackend = async function (backend) {
+  const crop = await sampleCrop();
+  const cold = await upscaleTimed(crop, 4, backend);
+  const warm = await upscaleTimed(crop, 4, backend);
+  const x2 = await upscaleTimed(crop, 2, backend);
+  const ref = backend === 'wasm' ? warm : await upscaleTimed(crop, 4, 'wasm');
+  let sum = 0, max = 0;
+  for (let i = 0; i < ref.p.data.length; i++) { if ((i & 3) === 3) continue; const d = Math.abs(ref.p.data[i] - warm.p.data[i]); sum += d; if (d > max) max = d; }
+  return { backend, cold_x4: strip(cold), warm_x4: strip(warm), warm_x2: strip(x2), vsWasm: { mean: +(sum / (ref.p.data.length * 0.75)).toFixed(3), max } };
+};
+
+if (location.search.includes('run')) runAiTests().then((r) => log('done'), (e) => log('FAILED ' + e.stack));
+</script>
+</body>
+</html>
