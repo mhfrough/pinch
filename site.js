@@ -107,7 +107,8 @@
   window.addEventListener('scroll', () => {
     if (!ticking) { ticking = true; requestAnimationFrame(onScroll); }
   }, { passive: true });
-  onScroll();
+  ticking = true;
+  requestAnimationFrame(onScroll);   // measuring now would force the first layout inside this script's task
 
   /* ------------------------------------------------------------ phone menu */
   const menuBtn = $('#menu-btn');
@@ -139,23 +140,50 @@
     window.matchMedia('(min-width: 761px)').addEventListener('change', (e) => { if (e.matches) setMenu(false); });
   }
 
+  /* ------------------------------------------------------------ landing pictures
+     The big feature pictures carry data-src and load when they come near, so nothing below the
+     studio competes with its first screen (loading="lazy" alone starts them at once, because they
+     sit within the browser's lazy-load distance of the fold). */
+  function loadPicture(img) {
+    if (!img.dataset.src) return;
+    if (img.dataset.srcset) { img.srcset = img.dataset.srcset; img.removeAttribute('data-srcset'); }
+    img.src = img.dataset.src;
+    img.removeAttribute('data-src');
+  }
+  const pictures = $$('img[data-src]').filter((img) => !img.closest('#cmp'));   // the compare tile loads its own, below
+  if (pictures.length && 'IntersectionObserver' in window) {
+    const pio = new IntersectionObserver((es) => es.forEach((e) => {
+      if (e.isIntersecting) { pio.unobserve(e.target); loadPicture(e.target); }
+    }), { rootMargin: '400px 0px' });
+    pictures.forEach((img) => pio.observe(img));
+  } else pictures.forEach(loadPicture);
+
   /* ------------------------------------------------------------ entrance motion
      Only content that starts below the fold is hidden, and only when motion is allowed,
      so nothing is ever invisible without JS or with reduced motion. */
   if ('IntersectionObserver' in window && !reduceMotion.matches) {
-    const items = $$('[data-reveal]').filter((el) => el.getBoundingClientRect().top > window.innerHeight);
-    const io = new IntersectionObserver((entries) => {
-      let k = 0;
-      entries.filter((e) => e.isIntersecting)
-        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top || a.boundingClientRect.left - b.boundingClientRect.left)
-        .forEach((e) => {
-          e.target.style.setProperty('--i', String(k++));
-          e.target.classList.remove('is-pending');
-          io.unobserve(e.target);
-          setTimeout(() => e.target.style.removeProperty('--i'), 900);
-        });
-    }, { rootMargin: '0px 0px -6% 0px', threshold: 0.08 });
-    items.forEach((el) => { el.classList.add('is-pending'); io.observe(el); });
+    // Measure the section first: sections below the fold skip layout (content-visibility), and measuring
+    // an item inside one would force it.
+    const below = (el) => {
+      const sec = el.closest('.sec, .foot');
+      return (sec && sec.getBoundingClientRect().top > window.innerHeight) || el.getBoundingClientRect().top > window.innerHeight;
+    };
+    // in the next frame, so measuring does not force a layout inside this script's task
+    requestAnimationFrame(() => {
+      const items = $$('[data-reveal]').filter(below);
+      const io = new IntersectionObserver((entries) => {
+        let k = 0;
+        entries.filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top || a.boundingClientRect.left - b.boundingClientRect.left)
+          .forEach((e) => {
+            e.target.style.setProperty('--i', String(k++));
+            e.target.classList.remove('is-pending');
+            io.unobserve(e.target);
+            setTimeout(() => e.target.style.removeProperty('--i'), 900);
+          });
+      }, { rootMargin: '0px 0px -6% 0px', threshold: 0.08 });
+      items.forEach((el) => { el.classList.add('is-pending'); io.observe(el); });
+    });
   }
 
   /* ------------------------------------------------------------ GitHub stars
@@ -168,12 +196,17 @@
     $('#starCount').textContent = n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n);
     $('.star-sr', star).textContent = n > 0 ? ', ' + n + ' ' + (n === 1 ? 'star' : 'stars') : '';
   };
+  const afterLoad = (fn) => {
+    const idle = () => ('requestIdleCallback' in window ? requestIdleCallback(fn, { timeout: 3000 }) : setTimeout(fn, 300));
+    if (document.readyState === 'complete') idle(); else window.addEventListener('load', idle, { once: true });
+  };
   if (star) (async () => {
     const KEY = 'pinch-stars', FRESH = 5 * 60e3;
     let cached = null;
     try { cached = JSON.parse(localStorage.getItem(KEY)); } catch (e) { cached = null; }
     if (cached && typeof cached.n === 'number') showStars(cached.n);
     if (cached && cached.n > 0 && Date.now() - cached.t < FRESH) return;
+    await new Promise(afterLoad);   // never ahead of the first screen
     try {
       const res = await fetch('https://api.github.com/repos/mhfrough/pinch', { cache: 'no-store' });
       const n = res.ok ? (await res.json()).stargazers_count : null;
@@ -255,8 +288,17 @@
     } catch (e) { gpu = false; }
     setEnv('gpu', gpu, gpu ? 'Yes' : 'No, uses WebAssembly');
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', runChecks);
-  else runChecks();
+  // The checks fill cells further down the page, and the WebGPU and WebGL probes cost real main-thread
+  // time, so they run when one of those sections comes near (observing the sections, not the cells,
+  // because the sections skip layout until then).
+  (function scheduleChecks() {
+    let done = false;
+    const run = () => { if (!done) { done = true; runChecks(); } };
+    const secs = Array.from(new Set($$('[data-live], [data-env]').map((el) => el.closest('.sec, .foot') || el)));
+    if (!secs.length || !('IntersectionObserver' in window)) { run(); return; }
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); run(); } }, { rootMargin: '800px 0px' });
+    secs.forEach((el) => io.observe(el));
+  })();
 
   /* ------------------------------------------------------------ network readout
      Counts every resource request this page makes after the first image is added. */
@@ -449,6 +491,7 @@
     const start = () => {
       if (started) return;
       started = true;
+      $$('img[data-src]', cmpTile).forEach(loadPicture);
       makeWebp().then((webp) => {
         if (!webp) return;
         const img = $('.cmp-after img', cmpTile);
@@ -461,7 +504,7 @@
       }).catch(() => {});
     };
     if ('IntersectionObserver' in window) {
-      const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); start(); } }, { rootMargin: '600px 0px' });
+      const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); start(); } }, { rootMargin: '200px 0px' });
       io.observe(cmpTile);
     } else start();
   }
@@ -534,14 +577,21 @@
   /* upscale preview: a tiny crop of a sample, drawn small and shown large */
   const canvas = $('#up-canvas');
   if (canvas && canvas.getContext) {
-    const img = new Image();
-    img.decoding = 'async';
-    img.onload = () => {
-      const ctx = canvas.getContext('2d');
-      ctx.imageSmoothingQuality = 'high';
-      // a 360 x 240 region around the middle ship in the harbour photo, drawn at 90 x 60
-      ctx.drawImage(img, 1053, 651, 360, 240, 0, 0, canvas.width, canvas.height);
+    const draw = () => {
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = () => {
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingQuality = 'high';
+        // a 360 x 240 region (in the 2400 px original) around the middle ship in the harbour photo, drawn at 90 x 60;
+        // the 1200 px copy is plenty for that and a third of the bytes
+        ctx.drawImage(img, 1053 / 2, 651 / 2, 180, 120, 0, 0, canvas.width, canvas.height);
+      };
+      img.src = 'assets/samples/1200/p266.jpg';
     };
-    img.src = 'assets/samples/p266.jpg';
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { io.disconnect(); draw(); } }, { rootMargin: '600px 0px' });
+      io.observe(canvas);
+    } else draw();
   }
 })();

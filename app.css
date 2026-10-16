@@ -4,6 +4,8 @@
    a horizontal file strip and the inspector as a bottom sheet. */
 
 #studio { position: relative; }
+/* Hold the studio's first-screen height until app.js fills it, so the landing below never jumps (CLS). */
+#studio:empty { min-height: calc(100svh - 56px); }
 
 .ps {
   /* local aliases built from tokens, so dark mode only has to swap a few */
@@ -34,6 +36,8 @@
 
 /* ------------------------------------------------------------------ empty state */
 .ps-empty { flex: 1; display: flex; min-height: 0; animation: ps-in var(--t-slow) var(--ease-out) both; }
+/* The first screen paints at once: a fade from opacity 0 would hide the hero from LCP until the demo image arrives. */
+.ps-empty.is-first { animation: none; }
 .ps-hero {
   position: relative;
   flex: 1;
@@ -142,8 +146,8 @@
 .ps-sample:hover .ps-sample-img img { transform: scale(1.035); }
 .ps-sample:active .ps-sample-img { transform: scale(0.985); transition: transform var(--t-fast) var(--ease-out); }
 .ps-sample-cap { display: flex; justify-content: space-between; gap: var(--s-2); padding: 6px 1px 0; font-size: var(--text-xs); white-space: nowrap; }
-.ps-sample-cap span:first-child { font-weight: 520; }
-.ps-sample-cap span:last-child { color: var(--ink-3); }
+.ps-sample-cap > span:first-child { font-weight: 520; }
+.ps-sample-cap > span:last-child { color: var(--ink-3); }
 .ps-hero-foot {
   display: flex; align-items: center; gap: var(--s-2);
   margin-top: var(--s-10); padding-top: var(--s-5);
@@ -631,7 +635,7 @@
   .ps-work { grid-template-columns: 236px minmax(0, 1fr) 296px; }
   .ps-hero { grid-template-columns: minmax(0, 1fr) minmax(0, 0.82fr); column-gap: var(--s-12); }
   .ps-h1 { font-size: min(calc(var(--text-2xl) * 0.86), 9.6cqi); }
-  .ps-sample-cap span:last-child { display: none; }
+  .ps-sample-cap > span:last-child { display: none; }
   .ps-body, .ps-res { padding-left: 16px; padding-right: 16px; }
 }
 @media (max-width: 1023px) and (min-width: 820px) {
@@ -668,7 +672,7 @@
   .ps-sample-grid { gap: var(--s-2); }
   .ps-sample-img { aspect-ratio: 1; }
   .ps-sample-cap { padding-top: 6px; font-size: var(--text-xs); }
-  .ps-sample-cap span:last-child { display: none; }
+  .ps-sample-cap > span:last-child { display: none; }
   .ps-hero-foot { display: none; }
 
   /* workspace: stage, strip, then the sheet resting on the bar */

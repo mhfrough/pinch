@@ -3,13 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Pinch</title>
+  <title>Pinch: compress, convert and upscale images in your browser</title>
   <meta name="description" content="Compress, convert and upscale images in your browser. JPG, PNG, WebP and AVIF, batch saving as a ZIP and a target file size. Nothing is uploaded, no account, no limits.">
   <link rel="canonical" href="https://mhfrough.github.io/pinch/">
   <meta name="theme-color" content="#f6f6f4" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0c0d0f" media="(prefers-color-scheme: dark)">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Pinch">
@@ -32,11 +34,13 @@
     } catch (e) {}
   </script>
 
-  <link rel="preconnect" href="https://api.github.com" crossorigin>
   <link rel="preload" href="assets/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- The studio's first picture (rendered by app.js); same srcset and sizes as the img there. -->
+  <link rel="preload" as="image" href="assets/samples/1200/p11.jpg" imagesrcset="assets/samples/800/p11.jpg 800w, assets/samples/1200/p11.jpg 1200w, assets/samples/p11.jpg 2400w" imagesizes="(max-width: 819px) calc(100vw - 72px), 560px" fetchpriority="high">
   <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="app.css">
   <link rel="stylesheet" href="site.css">
+  <noscript><style>#studio:empty { min-height: 0; }</style></noscript>
 </head>
 <body>
   <svg class="sprite" aria-hidden="true" focusable="false">
@@ -113,8 +117,8 @@
           <article class="tile t-compare" data-reveal>
             <div class="well cmp" data-ui>
               <div class="cmp-stage" id="cmp" style="--pos: 50%; --zoom: 1">
-                <div class="cmp-layer"><img src="assets/samples/p989.jpg" alt="" width="2400" height="1600" decoding="async"></div>
-                <div class="cmp-layer cmp-after"><img src="assets/samples/p989.jpg" alt="" width="2400" height="1600" decoding="async"></div>
+                <div class="cmp-layer"><img data-src="assets/samples/p989.jpg" alt="" width="2400" height="1600" decoding="async"><noscript><img src="assets/samples/p989.jpg" alt="" width="2400" height="1600" loading="lazy"></noscript></div>
+                <div class="cmp-layer cmp-after"><img data-src="assets/samples/p989.jpg" alt="" width="2400" height="1600" decoding="async"></div>
                 <div class="cmp-line" role="slider" tabindex="0" aria-label="Compare original and WebP" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-valuetext="50 percent">
                   <span class="cmp-handle"><svg class="ico" aria-hidden="true"><use href="#i-drag"/></svg></span>
                 </div>
@@ -140,7 +144,7 @@
                 <label class="ui-row" for="q-range"><span class="ui-label">Quality</span><output class="ui-value num" id="q-value" for="q-range">75</output></label>
                 <input class="ui-range" id="q-range" type="range" min="40" max="95" step="5" value="75">
                 <div class="ui-file">
-                  <img class="ui-thumb" src="assets/samples/p11.jpg" alt="" width="40" height="40" decoding="async">
+                  <img class="ui-thumb" src="assets/samples/360/p11.jpg" alt="" width="40" height="40" loading="lazy" decoding="async">
                   <span class="ui-file-name">valley.webp<span class="ui-sub num" id="q-sub">2400 × 1600</span></span>
                   <span class="ui-size num"><span class="ui-was" data-m="q-in">353 KB</span><span class="ui-now" id="q-now">198 KB</span></span>
                   <span class="delta num" id="q-delta">−44%</span>
@@ -165,7 +169,7 @@
                   <button type="button" data-fmt="avif" aria-pressed="true">AVIF</button>
                 </div>
                 <div class="ui-file">
-                  <img class="ui-thumb" src="assets/samples/p266.jpg" alt="" width="40" height="40" decoding="async">
+                  <img class="ui-thumb" src="assets/samples/360/p266.jpg" alt="" width="40" height="40" loading="lazy" decoding="async">
                   <span class="ui-file-name" id="fmt-name">harbour.avif<span class="ui-sub num">from JPG</span></span>
                   <span class="ui-size num"><span class="ui-was" data-m="fmt-in">428 KB</span><span class="ui-now" id="fmt-now">196 KB</span></span>
                   <span class="delta num" id="fmt-delta">−54%</span>
@@ -183,25 +187,25 @@
             <div class="well" data-ui>
               <ul class="ui-list" aria-label="Example batch">
                 <li class="ui-file">
-                  <img class="ui-thumb" src="assets/samples/p11.jpg" alt="" width="40" height="40" decoding="async">
+                  <img class="ui-thumb" src="assets/samples/360/p11.jpg" alt="" width="40" height="40" loading="lazy" decoding="async">
                   <span class="ui-file-name">valley.webp<span class="ui-sub num">2400 × 1600</span></span>
                   <span class="ui-size num"><span class="ui-was" data-m="b1-in">353 KB</span><span class="ui-now" data-m="b1-out">198 KB</span></span>
                   <span class="delta num" data-m="b1-d">−44%</span>
                 </li>
                 <li class="ui-file">
-                  <img class="ui-thumb" src="assets/samples/p266.jpg" alt="" width="40" height="40" decoding="async">
+                  <img class="ui-thumb" src="assets/samples/360/p266.jpg" alt="" width="40" height="40" loading="lazy" decoding="async">
                   <span class="ui-file-name">harbour.webp<span class="ui-sub num">2400 × 1600</span></span>
                   <span class="ui-size num"><span class="ui-was" data-m="b2-in">428 KB</span><span class="ui-now" data-m="b2-out">288 KB</span></span>
                   <span class="delta num" data-m="b2-d">−33%</span>
                 </li>
                 <li class="ui-file">
-                  <img class="ui-thumb" src="assets/samples/p989.jpg" alt="" width="40" height="40" decoding="async">
+                  <img class="ui-thumb" src="assets/samples/360/p989.jpg" alt="" width="40" height="40" loading="lazy" decoding="async">
                   <span class="ui-file-name">lake.webp<span class="ui-sub num">2400 × 1600</span></span>
                   <span class="ui-size num"><span class="ui-was" data-m="b3-in">292 KB</span><span class="ui-now" data-m="b3-out">151 KB</span></span>
                   <span class="delta num" data-m="b3-d">−48%</span>
                 </li>
                 <li class="ui-file">
-                  <img class="ui-thumb" src="assets/samples/p353.jpg" alt="" width="40" height="40" decoding="async">
+                  <img class="ui-thumb" src="assets/samples/360/p353.jpg" alt="" width="40" height="40" loading="lazy" decoding="async">
                   <span class="ui-file-name">hills.webp<span class="ui-sub num">2400 × 1600</span></span>
                   <span class="ui-size num"><span class="ui-was" data-m="b4-in">578 KB</span><span class="ui-now" data-m="b4-out">440 KB</span></span>
                   <span class="delta num" data-m="b4-d">−24%</span>
@@ -221,7 +225,7 @@
           <!-- target size -->
           <article class="tile t-target" data-reveal>
             <div class="well tgt" data-ui>
-              <div class="tgt-photo"><img src="assets/samples/p353.jpg" alt="" width="2400" height="1600" decoding="async"></div>
+              <div class="tgt-photo"><img data-src="assets/samples/1200/p353.jpg" data-srcset="assets/samples/800/p353.jpg 800w, assets/samples/1200/p353.jpg 1200w" sizes="(max-width: 640px) 100vw, 600px" alt="" width="1200" height="800" decoding="async"><noscript><img src="assets/samples/1200/p353.jpg" alt="" width="1200" height="800" loading="lazy"></noscript></div>
               <div class="ui-pad">
                 <div class="ui-row"><span class="ui-label">Fit under</span></div>
                 <div class="seg" role="group" aria-label="Target size" id="tgt-seg">
@@ -535,9 +539,9 @@
     </div>
   </footer>
 
-  <script src="engine.js"></script>
+  <script src="engine.js" defer></script>
   <script src="ai/ai.js" defer></script>
-  <script src="app.js"></script>
-  <script src="site.js"></script>
+  <script src="app.js" defer></script>
+  <script src="site.js" defer></script>
 </body>
 </html>

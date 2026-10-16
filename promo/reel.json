@@ -1,0 +1,14 @@
+{
+  "name": "pinch-reel",
+  "root": "..",
+  "page": "promo/pinch-reel.html",
+  "port": 8150,
+  "fps": 30,
+  "scale": 2,
+  "crf": 16,
+  "work": "promo/.reel-work",
+  "out": "videos/pinch-reel.mp4",
+  "poster_t": 7.2,
+  "music": { "file": "promo/pinch-bgm.mp3", "offset": 29.38, "gain_db": -14, "fade_out": 1.2 },
+  "voiceover": { "file": null, "offset": 0.0, "mute": "", "duck_db": -9 }
+}

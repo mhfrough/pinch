@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinch Reel</title>
+<!--
+  Pinch promo reel: 1080x1920 (9:16), every time in CUES, render-ready (Sizzle skill).
+  The studio UI below is built from Pinch's own stylesheet (../tokens.css, ../app.css) and class names,
+  and every number on screen was measured with Pinch's own engine on its sample photos (see pinch-reel-script.md).
+  Preview: serve pinch/ (python -m http.server 8150 --directory pinch) and open /promo/pinch-reel.html.
+  Renderer contract: window.reelReady, window.startReel(), window.REEL.duration, no autoplay with ?render.
+-->
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../app.css">
+<style>
+/* ---------- reel tokens: Pinch's light theme comes from tokens.css; the dark scene copies its dark values ---------- */
+@property --split { syntax: '<number>'; inherits: true; initial-value: 0.5; }
+:root{
+  --in:cubic-bezier(.55,0,.75,.2); --out:cubic-bezier(.16,1,.3,1); --pop:cubic-bezier(.34,1.56,.64,1); --pinch:cubic-bezier(.7,0,.25,1);
+  --mark-tile:#111214;             /* site.css .brand-tile = var(--ink) in light */
+}
+.dk{ /* tokens.css :root[data-theme="dark"] */
+  color-scheme:dark;
+  --bg:#0c0d0f; --bg-raised:#16171a; --bg-sunken:#0f1012; --bg-hover:#222328;
+  --line:rgba(255,255,255,.07); --line-strong:rgba(255,255,255,.13);
+  --ink:#f3f3f2; --ink-2:#a9abb1; --ink-3:#74767d; --ink-inverse:#0c0d0f;
+  --accent:#5c7dff; --accent-ink:#ffffff; --accent-soft:rgba(92,125,255,.16);
+  --good:#3ccf8e; --good-soft:rgba(60,207,142,.14);
+  --shadow-panel:0 0 0 1px rgba(255,255,255,.05);
+  color:var(--ink);
+}
+html,body{margin:0;background:#000;overflow:hidden}
+#reel{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--font);
+  transform-origin:0 0;-webkit-font-smoothing:antialiased;letter-spacing:-.01em;line-height:1.2;font-feature-settings:"ss01","cv11"}
+#reel h1,#reel h2,#reel p{margin:0;line-height:inherit;text-wrap:nowrap}
+body.hold *,body.hold *::before,body.hold *::after{animation-play-state:paused !important}
+#reel.measure,#reel.measure *{animation:none !important;transition:none !important}
+/* studio aliases that app.css keeps on .ps */
+#reel{--seg-on:var(--bg-raised);--knob:var(--bg-raised)}
+#reel .ps-i{width:20px;height:20px;flex:none}
+
+/* ---------- motion vocabulary ---------- */
+@keyframes lineIn{from{transform:translateY(112%)}to{transform:none}}
+@keyframes lineOut{from{transform:none;opacity:1}to{transform:translateY(-135%);opacity:0}}
+@keyframes rise{from{opacity:0;transform:translateY(60px)}to{opacity:1;transform:none}}
+@keyframes riseS{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@keyframes riseOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(-60px)}}
+@keyframes sink{from{opacity:1;transform:none}to{opacity:0;transform:translateY(80px)}}
+@keyframes pop{from{opacity:0;transform:scale(.4)}to{opacity:1;transform:none}}
+@keyframes popS{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:none}}
+@keyframes popOut{from{opacity:1;transform:none}to{opacity:0;transform:scale(.9)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}
+@keyframes strike{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes charUp{from{transform:translateY(105%)}to{transform:none}}
+@keyframes devIn{from{opacity:0;transform:translateY(200px)}to{opacity:1;transform:none}}
+@keyframes slideL{from{opacity:1;transform:none}to{opacity:0;transform:translateX(-160px)}}
+@keyframes slideInR{from{opacity:0;transform:translateX(160px)}to{opacity:1;transform:none}}
+@keyframes press{0%,100%{transform:scale(1)}40%{transform:scale(.78)}}
+@keyframes tapRing{from{opacity:.9;transform:translate(-50%,-50%) scale(.3)}to{opacity:0;transform:translate(-50%,-50%) scale(1.8)}}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes clock{from{opacity:0}to{opacity:0}}
+@keyframes vis{from,to{visibility:visible}}
+@keyframes drift{from{background-position:0 0}to{background-position:192px 96px}}
+@keyframes prog{from{transform:scaleX(.04)}to{transform:scaleX(1)}}
+/* compare divider sweeps (the product's signature control, @property --split) */
+@keyframes sweepA{0%{--split:.95}55%{--split:.1}100%{--split:.5}}
+@keyframes sweepB{0%{--split:.95}55%{--split:.12}100%{--split:.52}}
+@keyframes wipeX{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes lineX{from{transform:translateX(0)}to{transform:translateX(1080px)}}
+
+/* ---------- background: Pinch's transparency checkerboard, faded and drifting ---------- */
+.r-clock{position:absolute;width:1px;height:1px;animation:clock var(--end) linear 0s both}
+.r-check{position:absolute;inset:-100px;
+  background-image:conic-gradient(rgba(17,18,20,.045) 25%,transparent 0 50%,rgba(17,18,20,.045) 0 75%,transparent 0);background-size:96px 96px;
+  -webkit-mask-image:radial-gradient(60% 50% at 50% 52%,#000 10%,transparent 85%);mask-image:radial-gradient(60% 50% at 50% 52%,#000 10%,transparent 85%);
+  animation:drift 25s linear 0s both}
+.dk .r-check{background-image:conic-gradient(rgba(255,255,255,.035) 25%,transparent 0 50%,rgba(255,255,255,.035) 0 75%,transparent 0)}
+
+/* ---------- headlines ---------- */
+.r-h{font-weight:600;letter-spacing:-.045em;line-height:.98;text-align:center}
+.r-line{display:block;overflow:hidden;padding:0 .06em .12em}
+.r-line>span{display:inline-block;white-space:nowrap;animation:lineIn 1s var(--out) var(--d) both, lineOut .45s var(--in) var(--o) forwards}
+.r-acc{color:var(--accent)}
+.r-hl{position:absolute;left:0;right:0;top:318px;height:250px;display:flex;align-items:center;justify-content:center;z-index:8}
+.r-hl .r-h{position:absolute;font-size:104px}
+
+/* ---------- brand pill (light; a dark twin lives in the dark scene) ---------- */
+.r-brand{position:absolute;top:190px;left:0;right:0;display:flex;justify-content:center;z-index:9}
+.r-brand-in{display:flex;align-items:center;gap:20px;padding:12px 34px 12px 12px;border-radius:999px;background:var(--bg-raised);box-shadow:var(--shadow-panel);
+  animation:popS .6s var(--out) var(--brandIn) both}
+.r-slot{width:72px;height:72px;flex:none}
+.r-brand-in b{font-size:42px;font-weight:600;letter-spacing:-.035em;animation:riseS .6s var(--out) var(--brandName) both}
+.r-brand-in span.r-desc{font-size:28px;font-weight:450;color:var(--ink-2);padding-left:20px;box-shadow:inset 2px 0 0 var(--line-strong);animation:riseS .6s var(--out) var(--brandDesc) both}
+.r-brand.light{visibility:hidden;animation:vis 1s linear var(--brandIn) 1 none;animation-duration:var(--brandLife)}
+.r-brand.dark .r-brand-in,.r-brand.dark b,.r-brand.dark .r-desc{animation:none}
+.r-brand.dark{animation:riseOut .45s var(--in) var(--darkOut) forwards}
+.r-mk{width:72px;height:72px;display:block}
+
+/* ---------- S1 hook ---------- */
+.r-a{position:absolute;left:0;right:0;top:830px;display:flex;justify-content:center;z-index:6}
+.r-a .r-h{font-size:124px}
+.r-chip{position:absolute;display:flex;align-items:center;gap:16px;height:96px;padding:0 36px 0 28px;border-radius:999px;background:var(--bg-raised);box-shadow:var(--shadow-float);
+  font-size:36px;font-weight:550;white-space:nowrap;color:var(--ink);
+  rotate:var(--r,0deg);animation:pop .6s var(--pop) var(--d) both, sink .55s var(--in) var(--o) forwards}
+#reel .r-chip .ps-i{width:38px;height:38px;color:var(--ink-3)}
+#reel .r-chip.bad .ps-i{color:var(--bad)}
+.r-chip::after{content:"";position:absolute;left:20px;right:20px;top:50%;height:7px;margin-top:-3.5px;border-radius:7px;background:var(--accent);
+  transform-origin:left;transform:scaleX(0);animation:strike .35s var(--out) var(--s) both}
+
+/* ---------- S2 reveal: the screen becomes the Pinch mark, then pinches into the brand pill ---------- */
+.r-tile{position:absolute;inset:0;background:var(--mark-tile);visibility:hidden}
+.r-corner{position:absolute;box-sizing:border-box;border:0 solid var(--bg);visibility:hidden}
+.r-corner.tl{border-style:solid none none solid}
+.r-corner.br{border-style:none solid solid none}
+.r-dot{position:absolute;background:var(--accent);visibility:hidden}
+.r-t1{position:absolute;inset:0;z-index:30;pointer-events:none}
+.r-t1 > *{animation-name:var(--a1),var(--a2),vis;animation-duration:.55s,.55s,var(--t1Life);animation-timing-function:var(--pinch),var(--pinch),linear;
+  animation-delay:var(--wipe),var(--pinchT),var(--wipe);animation-fill-mode:both,forwards,none}
+.r-t1 .r-dot{animation-delay:calc(var(--wipe) + .12s),var(--pinchT),var(--wipe)}
+.r-rv{position:absolute;left:0;right:0;top:850px;display:flex;flex-direction:column;align-items:center;color:var(--bg);animation:fadeOut .25s ease var(--rvOut) forwards}
+.r-word{display:flex;font-size:270px;font-weight:600;letter-spacing:-.06em;line-height:.86;padding:0 .04em .1em;overflow:hidden}
+.r-word span{display:inline-block;animation:charUp .8s var(--out) var(--d) both}
+.r-tag{margin-top:44px;font-size:60px;font-weight:500;letter-spacing:-.03em;line-height:1.18;text-align:center;color:#a9abb1}
+.r-tag span{display:block;animation:riseS .7s var(--out) var(--d) both}
+.r-tag span + span{color:var(--bg)}
+
+/* ---------- S3 demo: the studio, from app.css classes, at zoom 2 ---------- */
+.r-z{position:absolute;left:45px;width:450px;zoom:2;z-index:4}
+.r-stage{top:300px;animation:devIn 1s var(--out) var(--d) both, slideL .5s var(--in) var(--o) forwards}
+.r-z .ps-demo{border-radius:var(--r-lg);box-shadow:var(--shadow-panel);cursor:default}
+.r-stageA .ps-demo{animation:sweepA 1.7s var(--pinch) var(--sweepA) both}
+.r-stageB .ps-demo{animation:sweepB 1.5s var(--pinch) var(--sweepB) both}
+.r-z .ps-demo .ps-tag{top:12px}
+.r-z .ps-tag-b .ps-pct{height:18px;padding:0 6px;margin-right:-5px;font-size:11px}
+.r-z .ps-tag-b.is-busy .ps-spin{display:inline-block}
+.r-pix{image-rendering:pixelated}
+.r-tagB{animation:fadeIn .3s ease var(--d) both}
+.r-chips{top:611px;left:0;width:540px;display:flex;justify-content:center;z-index:5;animation:fadeOut .3s ease var(--o) forwards}
+.r-chips .ps-chip-opt{animation:pop .5s var(--pop) var(--d) both}
+.r-panel{top:650px;animation:devIn .9s var(--out) var(--d) both, slideL .5s var(--in) var(--o) forwards}
+.r-card{background:var(--bg-raised);border-radius:var(--r-lg);box-shadow:var(--shadow-panel);overflow:hidden}
+.r-card .ps-res{border-bottom:0;padding:16px 20px 16px}
+.r-res-l3x{display:flex;align-items:center;gap:6px}
+.r-res-l3x .ps-i{width:14px;height:14px;color:var(--good)}
+/* batch */
+.r-files{top:300px;animation:slideInR .7s var(--out) var(--d) both, slideL .5s var(--in) var(--o) forwards}
+.r-files .ps-files{position:static}
+.r-files .ps-list{overflow:hidden}
+.r-files .ps-row{animation:riseS .5s var(--out) var(--d) both}
+.r-files .ps-row-main{cursor:default}
+.r-files .ps-row .ps-row-prog i{animation:prog .6s linear var(--d) both}
+.r-files .ps-thumb img{opacity:1}
+.r-bar{top:660px;animation:slideInR .7s var(--out) var(--d) both, slideL .5s var(--in) var(--o) forwards}
+.r-bar .ps-bar{height:60px;padding:0 12px 0 20px}
+.r-bar .ps-a-all{min-width:0}
+.r-toastwrap .ps-toast.r-toast{position:absolute;left:50%;width:max-content;max-width:none;top:722px;bottom:auto;z-index:6;opacity:0;transform:translate(-50%,10px) scale(.96);transition:none;
+  animation:toastIn .45s var(--pop) var(--d) both, fadeOut .3s ease var(--o) forwards}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,10px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+.r-toastwrap{position:absolute;left:0;top:0;width:540px;height:960px;zoom:2;z-index:6;pointer-events:none}
+/* upscale */
+.r-up{top:615px}
+.r-up .r-card{padding:12px;display:grid;gap:8px}
+#reel .r-up .ps-seg span .ps-i{width:14px;height:14px}
+.r-up-note{position:absolute;left:0;right:0;top:1446px;display:flex;justify-content:center;align-items:center;gap:12px;z-index:5;
+  font-size:30px;font-weight:500;color:var(--ink-2);animation:riseS .6s var(--out) var(--d) both, fadeOut .3s ease var(--o) forwards}
+#reel .r-up-note .ps-i{width:32px;height:32px;color:var(--accent)}
+
+/* taps */
+.r-tap{position:absolute;left:0;top:0;z-index:14;width:0;height:0;opacity:0;animation:fadeIn .2s ease calc(var(--at) - .3s) both, fadeOut .3s ease calc(var(--at) + .4s) forwards}
+.r-tap i{position:absolute;left:-34px;top:-34px;width:68px;height:68px;border-radius:50%;background:rgba(17,18,20,.16);box-shadow:0 0 0 3px rgba(255,255,255,.95),0 4px 14px rgba(17,18,20,.18);animation:press .35s var(--out) var(--at) both}
+.r-tap b{position:absolute;left:0;top:0;width:110px;height:110px;border-radius:50%;border:4px solid var(--accent);opacity:0;animation:tapRing .6s var(--out) var(--at) both}
+
+/* ---------- S4 proof: a full-screen compare divider sweeps the reel into Pinch's dark theme ---------- */
+.r-dark{position:absolute;inset:0;z-index:40;background:var(--bg);visibility:hidden;
+  animation:wipeX .8s var(--pinch) var(--proof) both, vis 1s linear var(--proof) 1 none;animation-duration:.8s,var(--darkLife)}
+.r-divider{position:absolute;top:0;bottom:0;left:-3px;width:6px;z-index:45;background:var(--accent);visibility:hidden;
+  animation:lineX .8s var(--pinch) var(--proof) both, vis .8s linear var(--proof) none}
+.r-divider i{position:absolute;left:50%;top:960px;width:96px;height:96px;margin:-48px 0 0 -48px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;box-shadow:var(--shadow-float)}
+#reel .r-divider i .ps-i{width:48px;height:48px}
+.r-proof{position:absolute;inset:0;animation:fadeOut .3s ease var(--darkOut) forwards}
+.r-big{position:absolute;left:90px;right:90px;top:640px;padding:44px 48px 40px;border-radius:36px;background:var(--bg-raised);box-shadow:var(--shadow-panel);
+  animation:rise .8s var(--out) var(--d) both}
+.r-big dt{font-size:34px;font-weight:500;color:var(--ink-2)}
+.r-big .r-zero{display:flex;align-items:baseline;gap:22px;margin-top:6px;font-size:210px;font-weight:600;letter-spacing:-.05em;line-height:1;font-variant-numeric:tabular-nums}
+.r-big .r-zero small{font-size:84px;letter-spacing:-.03em;color:var(--ink-2);font-weight:550}
+.r-facts{position:absolute;left:90px;right:90px;top:1010px;display:grid;gap:6px}
+.r-facts div{display:flex;align-items:baseline;justify-content:space-between;height:92px;align-items:center;padding:0 40px;border-radius:24px;background:var(--bg-raised);
+  animation:riseS .55s var(--out) var(--d) both}
+.r-facts dt{font-size:32px;color:var(--ink-2)}
+.r-facts dd{margin:0;font-size:36px;font-weight:600}
+.r-off{position:absolute;left:0;right:0;top:1430px;display:flex;justify-content:center;animation:pop .55s var(--pop) var(--d) both}
+.r-off span{display:flex;align-items:center;gap:14px;height:80px;padding:0 34px 0 26px;border-radius:999px;background:var(--accent-soft);color:var(--ink);font-size:32px;font-weight:550}
+.r-off svg{width:36px;height:36px;color:var(--accent);fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- S5 CTA: the dark screen pinches into the mark ---------- */
+.r-t2{position:absolute;inset:0;z-index:50;pointer-events:none;visibility:hidden;animation:vis 1s linear var(--t2In) 1 none;animation-duration:var(--t2Life)}
+.r-t2 > *{visibility:inherit}
+.r-t2 .r-tile{animation:fadeIn .3s ease var(--t2In) both, var(--b2) .6s var(--pinch) var(--cta) both}
+.r-t2 .r-corner,.r-t2 .r-dot{animation:popS .4s var(--out) var(--t2In) both, var(--b2) .6s var(--pinch) var(--cta) both}
+.r-t2 .r-dot{animation-delay:calc(var(--t2In) + .08s),var(--cta)}
+.r-g{position:absolute;left:0;right:0;top:640px;display:flex;flex-direction:column;align-items:center;z-index:60}
+.r-g .r-h{font-size:156px}
+.r-sub{margin-top:26px;font-size:52px;font-weight:450;color:var(--ink-2);letter-spacing:-.02em;animation:riseS .7s var(--out) var(--ctaSub) both}
+.r-url{margin-top:56px;display:flex;align-items:center;height:112px;padding:0 50px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:44px;font-weight:550;letter-spacing:-.015em;
+  animation:pop .6s var(--pop) var(--ctaUrl) both}
+.r-url .caret{display:inline-block;width:4px;height:48px;background:var(--accent-ink);margin-left:4px;vertical-align:-9px;animation:blink 1s linear 0s infinite both}
+
+/* preview chrome, hidden when rendering */
+.r-ui{position:fixed;right:16px;bottom:16px;display:flex;gap:8px;align-items:center;z-index:99;font:600 14px/1 system-ui;color:#eee}
+.r-ui button{min-height:40px;padding:0 16px;border:0;border-radius:999px;background:#eee;color:#111;font:inherit;cursor:pointer}
+.r-ui span{padding:12px 14px;border-radius:999px;background:#222;font-variant-numeric:tabular-nums}
+.render .r-ui{display:none}
+</style>
+</head>
+<body class="hold">
+<div id="reel">
+  <div class="r-clock" id="clk"></div>
+  <div class="r-check"></div>
+
+  <!-- S1 hook: the pain, and the usual ways round it, struck out -->
+  <div class="r-a">
+    <h1 class="r-h">
+      <span class="r-line"><span data-in="a" data-out="aOut">Image too big</span></span>
+      <span class="r-line"><span class="r-acc" data-in="a+.12" data-out="aOut+.05">to upload?</span></span>
+    </h1>
+  </div>
+  <div class="r-chip bad" style="left:70px;top:560px;--r:-4deg" data-in="a+.4" data-out="aOut-.1" data-s="strike"><svg class="ps-i" data-i="alert"></svg>Max file size 2 MB</div>
+  <div class="r-chip" style="left:470px;top:690px;--r:3deg" data-in="a+.55" data-out="aOut-.05" data-s="strike+.22"><svg class="ps-i" data-i="image"></svg>photo.jpg · 4.8 MB</div>
+  <div class="r-chip" style="left:80px;top:1220px;--r:3deg" data-in="a+.7" data-out="aOut" data-s="strike+.44"><svg class="ps-i" data-i="upload"></svg>Upload it to shrink it?</div>
+  <div class="r-chip" style="left:450px;top:1370px;--r:-3deg" data-in="a+.85" data-out="aOut+.05" data-s="strike+.66"><svg class="ps-i" data-i="lock"></svg>Sign up to download</div>
+
+  <!-- Persistent brand pill (light). The real mark lands in .r-slot: it is the reveal's tile, pinched. -->
+  <div class="r-brand light"><div class="r-brand-in"><span class="r-slot" id="slot"></span><b>Pinch</b><span class="r-desc">Compress, convert, upscale</span></div></div>
+
+  <!-- Headlines over the demo: one idea per beat -->
+  <div class="r-hl">
+    <h2 class="r-h">
+      <span class="r-line"><span data-in="d1+.1" data-out="d2">44% lighter.</span></span>
+      <span class="r-line"><span class="r-acc" data-in="d1+.22" data-out="d2">Same photo.</span></span>
+    </h2>
+    <h2 class="r-h">
+      <span class="r-line"><span data-in="d2+.45" data-out="d3">A preset for</span></span>
+      <span class="r-line"><span class="r-acc" data-in="d2+.57" data-out="d3">every place.</span></span>
+    </h2>
+    <h2 class="r-h">
+      <span class="r-line"><span data-in="d3+.45" data-out="d4">A whole folder.</span></span>
+      <span class="r-line"><span class="r-acc" data-in="d3+.57" data-out="d4">One ZIP.</span></span>
+    </h2>
+    <h2 class="r-h">
+      <span class="r-line"><span data-in="d4+.45" data-out="proof+.4">Too small?</span></span>
+      <span class="r-line"><span class="r-acc" data-in="d4+.57" data-out="proof+.45">Upscale it 4×.</span></span>
+    </h2>
+  </div>
+
+  <!-- D1 + D2: the compare stage (app.css .ps-demo), valley sample, Web preset -->
+  <div class="r-z r-stage r-stageA" data-in="d1" data-out="d3-.3">
+    <figure class="ps-demo">
+      <img class="ps-demo-a" src="../assets/samples/p11.jpg" alt="" width="2400" height="1600">
+      <div class="ps-demo-b"><img id="outA" src="media/valley-web.webp" alt="" width="2400" height="1600"></div>
+      <div class="ps-split ps-demo-split"><span class="ps-split-line"></span><span class="ps-split-knob"><svg class="ps-i" data-i="split"></svg></span></div>
+      <span class="ps-tag ps-tag-a"><span>Original</span><b class="num">353 KB</b></span>
+      <span class="ps-tag ps-tag-b is-busy" id="tagA"><span class="ps-tag-fmt" id="tagAf">WebP</span><b class="num" id="tagAb"></b><span class="ps-pct num" id="tagAp"></span><i class="ps-spin"></i></span>
+    </figure>
+  </div>
+  <div class="r-z r-chips" data-in="d2" data-out="d3-.3">
+    <div class="ps-chips ps-chips-row">
+      <label class="ps-chip-opt" data-in="d2+.15" data-out="99"><input class="vh" type="radio" name="pr" id="prWeb" checked><span>Web</span></label>
+      <label class="ps-chip-opt" data-in="d2+.22" data-out="99"><input class="vh" type="radio" name="pr"><span>Email</span></label>
+      <label class="ps-chip-opt" data-in="d2+.29" data-out="99" id="chipSocial"><input class="vh" type="radio" name="pr" id="prSocial"><span>Social</span></label>
+      <label class="ps-chip-opt" data-in="d2+.36" data-out="99"><input class="vh" type="radio" name="pr"><span>Favicon</span></label>
+      <label class="ps-chip-opt" data-in="d2+.43" data-out="99"><input class="vh" type="radio" name="pr"><span>Lossless</span></label>
+    </div>
+  </div>
+  <div class="r-z r-panel" data-in="d1+.15" data-out="d3-.25">
+    <div class="r-card">
+      <div class="ps-res" data-state="done">
+        <div class="ps-res-l1"><span class="ps-res-fmt" id="resF">WebP · quality 75</span><span class="ps-res-dim num" id="resD">2400 × 1600</span></div>
+        <div class="ps-res-l2"><span class="ps-res-size num" id="resS"></span><span class="ps-pct ps-res-pct num" id="resP"></span></div>
+        <div class="ps-res-l3 num r-res-l3x" id="resL">Encoding…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- D3: batch (app.css .ps-files / .ps-row / .ps-bar), the four samples with the Web preset -->
+  <div class="r-z r-files" data-in="d3" data-out="d4-.25">
+    <aside class="ps-files">
+      <div class="ps-files-head"><h2>Files <span class="ps-count num">4</span></h2>
+        <div class="ps-files-add"><span class="ps-ibtn"><svg class="ps-i" data-i="folder"></svg></span><span class="ps-ibtn"><svg class="ps-i" data-i="plus"></svg></span></div></div>
+      <ul class="ps-list" id="rows"></ul>
+    </aside>
+  </div>
+  <div class="r-z r-bar" data-in="d3+.1" data-out="d4-.2">
+    <div class="ps-bar">
+      <div class="ps-totals"><span class="ps-tot-n num">4 files</span><span class="ps-tot-b num" id="totB">1.61 MB</span><span class="ps-pct ps-tot-pct num" id="totP"></span></div>
+      <div class="ps-actions"><span class="btn btn-primary ps-a-all" id="saveAll"><svg class="ps-i" data-i="archive"></svg><span>Save all</span></span></div>
+    </div>
+  </div>
+  <div class="r-toastwrap"><div class="ps-toast r-toast" data-in="toast" data-out="d4-.2"><span class="ps-toast-ic"><svg class="ps-i" data-i="check"></svg></span><span class="ps-toast-t">Saved 4 images as pinch-images.zip</span></div></div>
+
+  <!-- D4: upscale. Real outputs: Pinch Smooth 4x and PinchAI (Real-ESRGAN) 4x of a 160 x 160 crop -->
+  <div class="r-z r-stage r-stageB" data-in="d4" data-out="proof+.6">
+    <figure class="ps-demo">
+      <img class="ps-demo-a r-pix" id="upA" src="media/hills-crop-160.png" alt="" width="160" height="160">
+      <div class="ps-demo-b"><img src="media/hills-ai-4x.webp" alt="" width="640" height="640"></div>
+      <div class="ps-split ps-demo-split"><span class="ps-split-line"></span><span class="ps-split-knob"><svg class="ps-i" data-i="split"></svg></span></div>
+      <span class="ps-tag ps-tag-a"><span id="upTa">Original</span><b class="num" id="upTb">160 × 160</b></span>
+      <span class="ps-tag ps-tag-b r-tagB" data-in="sweepB" data-out="99"><span class="ps-tag-fmt"><svg class="ps-i" data-i="spark" style="width:13px;height:13px"></svg></span><span>AI detail</span><b class="num">640 × 640</b></span>
+    </figure>
+  </div>
+  <div class="r-z r-panel r-up" data-in="d4+.15" data-out="proof+.6">
+    <div class="r-card">
+      <div class="ps-seg ps-seg-4 num" role="radiogroup" aria-label="Upscale"><label><input class="vh" type="radio" name="up" checked id="up1"><span>1×</span></label><label><input class="vh" type="radio" name="up"><span>2×</span></label><label><input class="vh" type="radio" name="up"><span>3×</span></label><label id="seg4"><input class="vh" type="radio" name="up" id="up4"><span>4×</span></label></div>
+      <div class="ps-seg" role="radiogroup" aria-label="Upscale method"><label><input class="vh" type="radio" name="m" checked id="mSmooth"><span>Smooth</span></label><label><input class="vh" type="radio" name="m"><span>Sharp</span></label><label><input class="vh" type="radio" name="m"><span>Pixel art</span></label><label id="segAI"><input class="vh" type="radio" name="m" id="mAI"><span><svg class="ps-i" data-i="spark"></svg>AI detail</span></label></div>
+    </div>
+  </div>
+  <div class="r-up-note" data-in="sweepB+.4" data-out="proof+.6"><svg class="ps-i" data-i="spark"></svg>Real-ESRGAN, running on your device</div>
+
+  <div class="r-tap" id="tapSocial" style="--at:var(--tapSocial)"><i></i><b></b></div>
+  <div class="r-tap" id="tapSave" style="--at:var(--tapSave)"><i></i><b></b></div>
+  <div class="r-tap" id="tap4" style="--at:var(--tap4)"><i></i><b></b></div>
+  <div class="r-tap" id="tapAI" style="--at:var(--tapAI)"><i></i><b></b></div>
+
+  <!-- S2 reveal tile (above the light scene; ends as the pill's mark) -->
+  <div class="r-t1">
+    <div class="r-tile" style="--a1:t1TileG;--a2:t1TileP">
+      <div class="r-rv">
+        <div class="r-word"><span data-c="0">P</span><span data-c="1">i</span><span data-c="2">n</span><span data-c="3">c</span><span data-c="4">h</span></div>
+        <p class="r-tag"><span id="tg1">Make images lighter.</span><span id="tg2">Keep them private.</span></p>
+      </div>
+    </div>
+    <div class="r-corner tl" style="--a1:t1TlG;--a2:t1TlP"></div>
+    <div class="r-corner br" style="--a1:t1BrG;--a2:t1BrP"></div>
+    <div class="r-dot" style="--a1:t1DotG;--a2:t1DotP"></div>
+  </div>
+
+  <!-- S4 proof, in Pinch's dark theme -->
+  <div class="r-dark dk">
+    <div class="r-check"></div>
+    <div class="r-brand dark"><div class="r-brand-in"><svg class="r-mk" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" style="fill:var(--ink)"/><path d="M8 14.5V9.5A1.5 1.5 0 0 1 9.5 8h5M24 17.5v5a1.5 1.5 0 0 1-1.5 1.5h-5" style="fill:none;stroke:var(--bg);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round"/><rect x="13" y="13" width="6" height="6" rx="1.5" style="fill:var(--accent)"/></svg><b>Pinch</b><span class="r-desc">Compress, convert, upscale</span></div></div>
+    <div class="r-proof">
+      <div class="r-hl">
+        <h2 class="r-h">
+          <span class="r-line"><span data-in="proof+.2" data-out="99">Nothing is</span></span>
+          <span class="r-line"><span class="r-acc" data-in="proof+.32" data-out="99">uploaded.</span></span>
+        </h2>
+      </div>
+      <dl class="r-big" data-in="proof+.5" data-out="99"><dt>Uploads</dt><dd class="r-zero" style="margin:0"><span id="zero">0</span><small>bytes</small></dd></dl>
+      <dl class="r-facts">
+        <div data-in="proof+.75" data-out="99"><dt>Account</dt><dd>None</dd></div>
+        <div data-in="proof+.85" data-out="99"><dt>Daily limit</dt><dd>None</dd></div>
+        <div data-in="proof+.95" data-out="99"><dt>Price</dt><dd>Free</dd></div>
+        <div data-in="proof+1.05" data-out="99"><dt>Licence</dt><dd>MIT</dd></div>
+      </dl>
+      <div class="r-off" data-in="proof+1.25" data-out="99"><span><svg viewBox="0 0 20 20"><path d="M3.5 3.5l13 13M10 15.25h.01M7.6 12.75a3.5 3.5 0 0 1 3.9-.6M5.1 10.1a7 7 0 0 1 2.6-1.5M12.4 8.7a7 7 0 0 1 2.5 1.4M2.6 7.4a10.5 10.5 0 0 1 2.7-1.8M9.1 4.8a10.5 10.5 0 0 1 8.3 2.6"/></svg>Works offline once loaded</span></div>
+    </div>
+  </div>
+  <div class="r-divider"><i><svg class="ps-i" data-i="split"></svg></i></div>
+
+  <!-- S5 CTA: the dark screen pinches into the mark -->
+  <div class="r-t2">
+    <div class="r-tile" style="--b2:t2Tile"></div>
+    <div class="r-corner tl" style="--b2:t2Tl"></div>
+    <div class="r-corner br" style="--b2:t2Br"></div>
+    <div class="r-dot" style="--b2:t2Dot"></div>
+  </div>
+  <div class="r-g">
+    <span class="r-slot" id="ctaSlot" style="width:200px;height:200px;margin-bottom:64px"></span>
+    <h2 class="r-h"><span class="r-line"><span data-in="cta+.4" data-out="99">Try <span class="r-acc">Pinch.</span></span></span></h2>
+    <p class="r-sub">Free, in your browser.</p>
+    <div class="r-url"><span><span id="urlText"></span><span class="caret"></span></span></div>
+  </div>
+</div>
+<div class="r-ui"><span id="clock">0.0s</span><button type="button" id="replay">Replay</button></div>
+
+<script>
+/*
+  Timeline, in seconds from the start of the reel. Retime by editing CUES only.
+  Music is picked after approval; its hit should land on `wipe` (tools/music_sync.py --cue 2.95 --length 25).
+*/
+var CUES = {
+  a: .08, strike: 1.3, aOut: 2.7,          // hook
+  wipe: 2.95, pinch: 4.7,                  // reveal: the screen becomes the mark, then pinches into the pill
+  brandIn: 5.0,
+  d1: 5.3, sweepA: 6.1, resA: 6.75,        // compare: Web preset on the valley, 353 KB -> 198 KB
+  d2: 8.9, tapSocial: 10.1,                // presets: Social, 82 KB
+  d3: 12.0, tapSave: 14.35, toast: 14.55,  // batch: four files, one ZIP
+  d4: 15.3, tap4: 16.0, tapAI: 16.7, sweepB: 16.85,   // upscale: Smooth vs AI detail
+  proof: 18.6,                             // full-screen divider sweep into the dark theme
+  cta: 21.5,                               // the dark screen pinches into the mark
+  end: 25
+};
+var URL_TEXT = 'mhfrough.github.io/pinch';
+// Measured with Pinch.process (Web preset = WebP q75, fit 2560) on assets/samples, Chromium, 2026-10-16
+var ROWS = [
+  ['p11.jpg', 'valley.jpg', '353 KB', '198 KB', '−44%'],
+  ['p266.jpg', 'harbour.jpg', '428 KB', '288 KB', '−33%'],
+  ['p989.jpg', 'lake.jpg', '292 KB', '151 KB', '−48%'],
+  ['p353.jpg', 'hills.jpg', '578 KB', '440 KB', '−24%']
+];
+</script>
+<script>
+(function(){
+  var C = CUES, $ = function(id){ return document.getElementById(id) };
+  var reel = $('reel');
+  var render = new URLSearchParams(location.search).has('render');
+  if (render) document.documentElement.classList.add('render');
+
+  /* icons: app.js ICONS (20px grid, 1.5px stroke) */
+  var ICONS = {
+    plus: '<path d="M10 4.5v11M4.5 10h11"/>',
+    upload: '<path d="M10 12.75V3.75M6.5 7.25 10 3.75l3.5 3.5"/><path d="M3.75 12v2.25c0 1.1.9 2 2 2h8.5c1.1 0 2-.9 2-2V12"/>',
+    folder: '<path d="M2.75 6.25c0-1.1.9-2 2-2h2.6c.5 0 .97.22 1.3.6l1 1.15h5.6c1.1 0 2 .9 2 2v5.75c0 1.1-.9 2-2 2H4.75c-1.1 0-2-.9-2-2z"/>',
+    archive: '<rect x="3.25" y="3.25" width="13.5" height="13.5" rx="2.75"/><path d="M10 3.25v1.5M10 6.25v1.5M10 9.25v1.5"/><rect x="8.5" y="12" width="3" height="2.25" rx="1"/>',
+    check: '<path d="M5.25 10.25 8.4 13.4 14.75 7"/>',
+    alert: '<path d="M8.73 3.98 3.3 13.4c-.56.98.14 2.2 1.27 2.2h10.86c1.13 0 1.83-1.22 1.27-2.2L11.27 3.98a1.47 1.47 0 0 0-2.54 0z"/><path d="M10 8v3.1M10 13.4h.01"/>',
+    lock: '<rect x="4.5" y="8.75" width="11" height="7.5" rx="2"/><path d="M7 8.75V6.75a3 3 0 0 1 6 0v2"/>',
+    spark: '<path d="M10 3.25c.45 3.4 2.35 5.3 5.75 5.75-3.4.45-5.3 2.35-5.75 5.75-.45-3.4-2.35-5.3-5.75-5.75 3.4-.45 5.3-2.35 5.75-5.75z"/><path d="M15.25 13.5v3M13.75 15h3"/>',
+    image: '<rect x="3.25" y="4.25" width="13.5" height="11.5" rx="2.25"/><circle cx="7.6" cy="8.1" r="1.2"/><path d="M3.6 13.9l3.5-3.5a1.4 1.4 0 0 1 2 0l3.6 3.6M11.4 12.7l1.1-1.1a1.4 1.4 0 0 1 2 0l1.9 1.9"/>',
+    split: '<path d="M7.25 6.75 4 10l3.25 3.25M12.75 6.75 16 10l-3.25 3.25"/>'
+  };
+  document.querySelectorAll('svg[data-i]').forEach(function(s){
+    s.setAttribute('viewBox', '0 0 20 20'); s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor');
+    s.setAttribute('stroke-width', '1.5'); s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round');
+    s.innerHTML = ICONS[s.dataset.i];
+  });
+
+  /* batch rows: app.js renderRow markup */
+  $('rows').innerHTML = ROWS.map(function(r, i){
+    return '<li class="ps-row has-thumb' + (i === 0 ? ' is-cur' : '') + '" data-status="working" data-in="d3+' + (.25 + i * .14).toFixed(2) + '" data-out="99">' +
+      '<span class="ps-row-main"><span class="ps-thumb"><img src="../assets/samples/' + r[0] + '" alt=""></span>' +
+      '<span class="ps-row-text"><span class="ps-row-name"><span class="ps-row-n">' + r[1] + '</span></span>' +
+      '<span class="ps-row-size num"><span class="ps-b0">' + r[2] + '</span><span class="ps-arrow">→</span><span class="ps-b1" id="b1' + i + '"></span></span></span>' +
+      '<span class="ps-pct ps-row-pct num" id="pc' + i + '"></span><i class="ps-spin ps-row-spin"></i></span>' +
+      '<span class="ps-row-meta" id="mt' + i + '"><span>Encoding…</span></span>' +
+      '<span class="ps-row-prog"><i style="--d:' + (C.d3 + .25 + i * .14).toFixed(2) + 's"></i></span></li>';
+  }).join('');
+
+  /* CSS variables derived from CUES */
+  var root = document.documentElement.style;
+  var vars = {
+    wipe: C.wipe, pinchT: C.pinch, rvOut: C.pinch - .12, t1Life: C.proof + 1 - C.wipe,
+    brandIn: C.brandIn - .25, brandName: C.brandIn - .1, brandDesc: C.brandIn, brandLife: C.proof + 1 - (C.brandIn - .25),
+    sweepA: C.sweepA, sweepB: C.sweepB, tapSocial: C.tapSocial, tapSave: C.tapSave, tap4: C.tap4, tapAI: C.tapAI,
+    proof: C.proof, darkLife: C.cta + .05 - C.proof, darkOut: C.cta - .4,
+    t2In: C.cta - .35, t2Life: C.end + 1 - (C.cta - .35), cta: C.cta,
+    ctaSub: C.cta + .7, ctaUrl: C.cta + .9,
+    end: C.end
+  };
+  for (var k in vars) root.setProperty('--' + k, vars[k].toFixed(2) + 's');
+  function at(expr){ var m = String(expr).match(/^([a-zA-Z0-9]+)([+-][.\d]+)?$/); return (isNaN(+m[1]) ? C[m[1]] : +m[1]) + (m[2] ? +m[2] : 0) }
+  document.querySelectorAll('[data-in]').forEach(function(el){
+    el.style.setProperty('--d', at(el.dataset.in).toFixed(2) + 's');
+    el.style.setProperty('--o', at(el.dataset.out).toFixed(2) + 's');
+    if (el.dataset.s) el.style.setProperty('--s', at(el.dataset.s).toFixed(2) + 's');
+  });
+  document.querySelectorAll('.r-word span').forEach(function(el){ el.style.setProperty('--d', (C.wipe + .3 + el.dataset.c * .05).toFixed(2) + 's') });
+  $('tg1').style.setProperty('--d', (C.wipe + .75).toFixed(2) + 's');
+  $('tg2').style.setProperty('--d', (C.wipe + .87).toFixed(2) + 's');
+
+  /* Preview: fit the 1080x1920 reel into the window */
+  function fit(){
+    if (render) return;
+    var s = Math.min(innerWidth / 1080, innerHeight / 1920);
+    reel.style.transform = 'translate(' + ((innerWidth - 1080 * s) / 2) + 'px,' + ((innerHeight - 1920 * s) / 2) + 'px) scale(' + s + ')';
+  }
+  fit(); addEventListener('resize', fit);
+
+  function box(el){
+    var r = el.getBoundingClientRect(), R = reel.getBoundingClientRect(), s = R.width / 1080;
+    return { x: (r.left - R.left) / s, y: (r.top - R.top) / s, w: r.width / s, h: r.height / s, cx: (r.left - R.left + r.width / 2) / s, cy: (r.top - R.top + r.height / 2) / s };
+  }
+
+  /* The mark (icon.svg, 32 units): tile rx 8, corner brackets at 8 and 24 (stroke 2.5), dot 13..19 (rx 1.5).
+     geo() maps it onto a box; FULL is the same mark stretched to the whole screen. */
+  function geo(M){
+    var s = M.w / 32, px = function(v){ return v.toFixed(2) + 'px' };
+    var c = function(o){ return { left: px(M.x + o * s), top: px(M.y + o * s), width: px(7.75 * s), height: px(7.75 * s), 'border-width': px(2.5 * s), 'border-radius': px(2.75 * s) } };
+    return {
+      tile: { 'clip-path': 'inset(' + px(M.y) + ' ' + px(1080 - M.x - M.w) + ' ' + px(1920 - M.y - M.w) + ' ' + px(M.x) + ' round ' + px(8 * s) + ')' },
+      tl: c(6.75), br: c(17.5),
+      dot: { left: px(M.x + 13 * s), top: px(M.y + 13 * s), width: px(6 * s), height: px(6 * s), 'border-radius': px(1.5 * s) }
+    };
+  }
+  function full(dotY){
+    var b = function(l, t){ return { left: l + 'px', top: t + 'px', width: '250px', height: '250px', 'border-width': '22px', 'border-radius': '44px' } };
+    return { tile: { 'clip-path': 'inset(0px 0px 0px 0px round 0px)' }, tl: b(70, 70), br: b(1080 - 70 - 250, 1920 - 70 - 250),
+      dot: { left: '480px', top: dotY + 'px', width: '120px', height: '120px', 'border-radius': '30px' } };
+  }
+  function decl(o){ return Object.keys(o).map(function(k){ return k + ':' + o[k] }).join(';') }
+  function kf(name, A, B){ return '@keyframes ' + name + '{from{' + decl(A) + '}to{' + decl(B) + '}}' }
+  function measure(){
+    var keep = reel.style.transform; reel.style.transform = 'none';
+    reel.classList.add('measure');
+    var pill = box($('slot')), cta = box($('ctaSlot'));
+    var start = geo({ x: 460, y: 880, w: 160 }), F1 = full(700), P = geo(pill), F2 = full(860), Q = geo(cta), css = '';
+    ['tile', 'tl', 'br', 'dot'].forEach(function(p){
+      var n = p.charAt(0).toUpperCase() + p.slice(1);
+      css += kf('t1' + n + 'G', start[p], F1[p]) + kf('t1' + n + 'P', F1[p], P[p]) + kf('t2' + n, F2[p], Q[p]);
+    });
+    // before its cue every part waits at the full-screen pose
+    ['tl', 'br', 'dot'].forEach(function(p){ css += '.r-t2 .r-' + (p === 'dot' ? 'dot' : 'corner.' + p) + '{' + decl(F2[p]) + '}' });
+    var st = document.getElementById('pinchCSS') || document.head.appendChild(Object.assign(document.createElement('style'), { id: 'pinchCSS' }));
+    st.textContent = css;
+    var place = function(tap, el){ var b = box(el); $(tap).style.left = b.cx + 'px'; $(tap).style.top = b.cy + 'px' };
+    place('tapSocial', $('chipSocial')); place('tapSave', $('saveAll')); place('tap4', $('seg4')); place('tapAI', $('segAI'));
+    reel.classList.remove('measure');
+    reel.style.transform = keep;
+  }
+
+  /* Beats: states inside the UI, in reel seconds (app.js wording) */
+  var BEATS = [];
+  function set(t, fn){ BEATS.push([t, fn]) }
+  function text(id, s){ $(id).textContent = s }
+  function tone(id, s, t){ var e = $(id); e.textContent = s; e.dataset.tone = t }
+  set(C.resA, function(){ $('tagA').classList.remove('is-busy'); text('tagAb', '198 KB'); tone('tagAp', '−44%', 'good');
+    text('resS', '198 KB'); tone('resP', '−44%', 'good'); text('resL', 'from 353 KB') });
+  set(C.tapSocial + .05, function(){ $('prSocial').checked = true; $('tagA').classList.add('is-busy'); text('tagAb', ''); text('tagAp', ''); $('tagAp').dataset.tone = '';
+    text('resF', 'JPG · quality 82'); text('resD', '1080 × 720'); text('resS', ''); text('resP', ''); $('resP').dataset.tone = ''; text('resL', 'Encoding…') });
+  set(C.tapSocial + .55, function(){ $('outA').src = 'media/valley-social.jpg'; $('tagA').classList.remove('is-busy'); text('tagAf', 'JPG'); text('tagAb', '82 KB'); tone('tagAp', '−77%', 'good');
+    text('resS', '82 KB'); tone('resP', '−77%', 'good'); text('resL', 'from 353 KB') });
+  ROWS.forEach(function(r, i){
+    set(C.d3 + .85 + i * .14, function(){ var li = $('rows').children[i]; li.dataset.status = 'done'; text('b1' + i, r[3]); tone('pc' + i, r[4], 'good');
+      $('mt' + i).innerHTML = '<span>WebP · 2400 × 1600</span>' });
+  });
+  set(C.d3 + .85 + 3 * .14 + .15, function(){ $('totB').innerHTML = '1.61 MB <span aria-hidden="true">→</span> 1.05 MB'; tone('totP', '35% smaller', 'good') });
+  set(C.tap4 + .05, function(){ $('up4').checked = true; $('upA').classList.remove('r-pix'); $('upA').src = 'media/hills-smooth-4x.webp'; text('upTa', 'Smooth'); text('upTb', '640 × 640') });
+  set(C.tapAI + .05, function(){ $('mAI').checked = true });
+  for (var u = 1; u <= URL_TEXT.length; u++) (function(u){ set(C.cta + 1.05 + u * .03, function(){ text('urlText', URL_TEXT.slice(0, u)) }) })(u);
+
+  function imgs(){ return Promise.all(Array.prototype.map.call(document.images, function(i){ return i.decode ? i.decode().catch(function(){}) : 0 })) }
+  function preload(){ return Promise.all(['media/valley-social.jpg', 'media/hills-smooth-4x.webp'].map(function(u){ var i = new Image(); i.src = u; return i.decode().catch(function(){}) })) }
+  window.reelReady = Promise.all([document.fonts.load('600 100px Geist'), document.fonts.load('500 40px Geist'), document.fonts.load('450 40px Geist'), imgs(), preload()])
+    .then(function(){ return document.fonts.ready }).then(function(){
+      measure();
+      window.REEL = { cues: C, duration: C.end };
+    });
+  window.startReel = function(){
+    document.body.classList.remove('hold');
+    if (render){
+      // Fire beats from the renderer's own seek time: its fake clock steps whole milliseconds (34 ms per
+      // 33.33 ms frame), so setTimeout beats would run ~2% fast and land early.
+      var queue = BEATS.slice().sort(function(x, y){ return x[0] - y[0] }), seek = window.__seek;
+      if (seek){ window.__seek = function(t){ while (queue.length && queue[0][0] <= t + 1e-6) queue.shift()[1](); seek(t) }; return }
+      BEATS.forEach(function(b){ setTimeout(b[1], b[0] * 1000) }); return
+    }
+    var ref = $('clk').getAnimations()[0], left = BEATS.slice().sort(function(x, y){ return x[0] - y[0] });
+    (function tick(){
+      var t = (ref.currentTime || 0) / 1000;
+      while (left.length && left[0][0] <= t) left.shift()[1]();
+      $('clock').textContent = Math.min(t, C.end).toFixed(1) + 's';
+      if (t < C.end) requestAnimationFrame(tick);
+    })();
+  };
+  $('replay').onclick = function(){ location.reload() };
+  if (!render) window.reelReady.then(window.startReel);
+})();
+</script>
+</body>
+</html>

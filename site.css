@@ -114,6 +114,9 @@
 
 /* ---------- sections ---------- */
 .sec { padding-top: var(--s-32); }
+/* The landing starts below the studio, so the browser may skip its layout and paint until it comes near,
+   which keeps the first layout small on phones. `auto` remembers the real sizes once rendered. */
+.sec, .foot { content-visibility: auto; contain-intrinsic-size: auto 1200px; }
 .sec-head { margin-bottom: var(--s-12); }
 .sec-head h2, .privacy-copy h2, .keys-copy h2 {
   font-size: var(--text-xl); font-weight: 600; line-height: 1.08; letter-spacing: var(--tracking-display);

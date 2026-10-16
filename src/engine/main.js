@@ -21,6 +21,7 @@ import { MSG, makeCanvas, sniffFile, openSource, decodePixels, loadImage } from 
   const cfg = window.PinchConfig || {};
   const FORCE_NO_WASM = cfg.wasm === false || /[?&]pinch-nowasm(=1)?(&|$)/.test(location.search);
   const POOL_SIZE = Math.min(4, Math.max(1, (navigator.hardwareConcurrency || 2) - 1));
+  const WARM_DELAY = typeof cfg.warmDelay === 'number' ? cfg.warmDelay : 10000; // ms after load, if nobody interacts first
 
   // 1x1 test images for native decode support (used for previews of results)
   const WEBP_1PX = 'data:image/webp;base64,UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA';
@@ -188,10 +189,12 @@ import { MSG, makeCanvas, sniffFile, openSource, decodePixels, loadImage } from 
   }
 
   // ------------------------------------------------------------------ ready
-  const ready = (async () => {
-    const [webpNative, avifNative, webpCanvas, avifCanvas] = await Promise.all([
-      canDecode(WEBP_1PX), canDecode(AVIF_1PX), canvasEncodes('image/webp'), canvasEncodes('image/avif'),
-    ]);
+  // The engine boots (fetches worker.js and starts a worker) on first use: the first read of
+  // Pinch.ready or Pinch.warmed, or the first inspect/process/compare. The studio asks for it once its
+  // first screen has painted, so the engine never competes with that.
+  let readyP = null;
+  const boot = () => readyP || (readyP = (async () => {
+    const [webpNative, avifNative] = await Promise.all([canDecode(WEBP_1PX), canDecode(AVIF_1PX)]);
     let wasm = false;
     if (!FORCE_NO_WASM && typeof Worker === 'function' && typeof WebAssembly === 'object') {
       try {
@@ -209,13 +212,18 @@ import { MSG, makeCanvas, sniffFile, openSource, decodePixels, loadImage } from 
     if (!wasm) { slots.forEach((s) => { try { s.worker.terminate(); } catch (e) { /* ignore */ } }); slots.length = 0; }
     mode = wasm ? 'wasm' : 'fallback';
     if (wasm && cfg.warm !== false) scheduleWarm(); else if (warmDone) warmDone();
+    // The canvas encoders only matter without WebAssembly; probing them creates a canvas, which can
+    // take 100+ ms on some browsers, so skip it when the WebAssembly encoders are there.
+    const [webpCanvas, avifCanvas] = wasm ? [true, true] : await Promise.all([canvasEncodes('image/webp'), canvasEncodes('image/avif')]);
     const encode = { jpeg: true, png: true, gif: true, bmp: true, ico: true, webp: wasm || webpCanvas, avif: wasm || avifCanvas };
     return { wasm, webpNative, avifNative, workers: wasm ? POOL_SIZE : 0, encode, heic: wasm };
-  })();
+  })());
 
   // ------------------------------------------------------------------ offline warm-up
   // Once the page is idle, fetch and compile every codec in the background (AVIF encoder last) and
   // share them with all workers, so every format keeps working if the connection drops.
+  // The warm-up waits for the first interaction (or WARM_DELAY after load), so its ~9 MB never
+  // competes with the first screen; a codec needed earlier still loads on use.
   let warmDone = null, warmList;
   const warmed = new Promise((resolve) => { warmDone = () => { warmDone = null; resolve(true); }; });
   function scheduleWarm() {
@@ -226,7 +234,20 @@ import { MSG, makeCanvas, sniffFile, openSource, decodePixels, loadImage } from 
       warmList = list;
       if (slots[0]) slots[0].worker.postMessage({ type: 'warm', list });
     };
-    if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 5000 }); else setTimeout(go, 2000);
+    const idle = () => { if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 5000 }); else setTimeout(go, 2000); };
+    if (typeof window === 'undefined' || typeof document === 'undefined') { idle(); return; }
+    const EVENTS = ['pointerdown', 'keydown', 'touchstart', 'wheel', 'scroll'];
+    let timer = 0, started = false;
+    const start = () => {
+      if (started) return;
+      started = true;
+      clearTimeout(timer);
+      EVENTS.forEach((t) => window.removeEventListener(t, start, true));
+      idle();
+    };
+    EVENTS.forEach((t) => window.addEventListener(t, start, { capture: true, passive: true }));
+    const arm = () => { timer = setTimeout(start, WARM_DELAY); };
+    if (document.readyState === 'complete') arm(); else window.addEventListener('load', arm, { once: true });
   }
 
   // ------------------------------------------------------------------ inspect
@@ -235,7 +256,7 @@ import { MSG, makeCanvas, sniffFile, openSource, decodePixels, loadImage } from 
     const sn = await sniffFile(file);
     let src = null;
     try { src = await openSource(file, sn); } catch (e) {
-      const st = await ready;
+      const st = await boot();
       if (st.wasm && (sn.format === 'heic' || sn.format === 'avif' || sn.format === 'webp')) return inspectInWorker(file, sn);
       throw e;
     }
@@ -295,7 +316,7 @@ import { MSG, makeCanvas, sniffFile, openSource, decodePixels, loadImage } from 
 
   async function prepare(file, settings) {
     if (!file || typeof file.slice !== 'function') throw new Error(MSG.generic);
-    const st = await ready;
+    const st = await boot();
     const s = normaliseSettings(settings);
     const sn = await sniffFile(file);
     const id = idOf(file);
@@ -372,7 +393,7 @@ import { MSG, makeCanvas, sniffFile, openSource, decodePixels, loadImage } from 
 
   /** Start fetching the codecs a format needs (e.g. when the user picks AVIF). */
   async function preload(format) {
-    const st = await ready;
+    const st = await boot();
     if (!st.wasm) return;
     for (const s of slots) s.worker.postMessage({ type: 'preload', format: format === 'auto' ? 'webp' : format });
   }
@@ -385,8 +406,8 @@ import { MSG, makeCanvas, sniffFile, openSource, decodePixels, loadImage } from 
 
   window.Pinch = {
     version: 2,
-    ready,
-    warmed,
+    get ready() { return boot(); },
+    get warmed() { boot(); return warmed; },
     FORMATS,
     inspect,
     process,

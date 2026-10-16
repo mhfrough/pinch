@@ -21,6 +21,10 @@
     { file: 'p989.jpg', name: 'Lake', bytes: 299315 },
     { file: 'p353.jpg', name: 'Hills', bytes: 591976 },
   ];
+  // Smaller copies for display only (assets/samples/<width>/); files opened in the studio are always the originals.
+  const sampleUrl = (file, w) => new URL('assets/samples/' + (w ? w + '/' : '') + file, BASE).href;
+  // Keep in step with the <link rel="preload"> for the same image in index.html.
+  const DEMO_SIZES = '(max-width: 819px) calc(100vw - 72px), 560px';
   const IMAGE_EXT = /\.(jpe?g|jfif|pjpeg|png|apng|webp|avif|gif|bmp|ico|cur|svg|heic|heif|tiff?|jxl)$/i;
 
   // ------------------------------------------------------------------ helpers
@@ -203,7 +207,7 @@
 
   root.innerHTML = `
 <div class="ps" data-view="empty">
-  <div class="ps-empty">
+  <div class="ps-empty is-first">
     <div class="ps-hero">
       <div class="ps-hero-copy">
         <h1 class="ps-h1">Make images lighter. Keep them private.</h1>
@@ -220,7 +224,7 @@
       </div>
       <div class="ps-show">
         <figure class="ps-demo" aria-label="Live preview of the selected preset on a sample photo">
-          <img class="ps-demo-a" src="${new URL('assets/samples/' + SAMPLES[1].file, BASE).href}" alt="Sample photo of a valley, original" width="2400" height="1600" draggable="false">
+          <img class="ps-demo-a" src="${sampleUrl(SAMPLES[1].file, 1200)}" srcset="${sampleUrl(SAMPLES[1].file, 800)} 800w, ${sampleUrl(SAMPLES[1].file, 1200)} 1200w, ${sampleUrl(SAMPLES[1].file)} 2400w" sizes="${DEMO_SIZES}" alt="Sample photo of a valley, original" width="2400" height="1600" fetchpriority="high" draggable="false">
           <div class="ps-demo-b"><img alt="The same photo after the selected preset" draggable="false"></div>
           <div class="ps-split ps-demo-split" role="slider" tabindex="0" aria-label="Compare the sample" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
             <span class="ps-split-line"></span><span class="ps-split-knob">${icon('split')}</span>
@@ -234,9 +238,9 @@
             <button type="button" class="ps-link" data-act="samples">Open all four</button>
           </div>
           <ul class="ps-sample-grid">
-            ${SAMPLES.map((s, i) => `<li><button type="button" class="ps-sample" data-sample="${i}" aria-label="Open sample photo: ${s.name}, ${fmtBytes(s.bytes)}">
-              <span class="ps-sample-img"><img src="${new URL('assets/samples/' + s.file, BASE).href}" alt="" width="240" height="160" decoding="async"></span>
-              <span class="ps-sample-cap"><span>${s.name}</span><span class="num">${fmtBytes(s.bytes)}</span></span>
+            ${SAMPLES.map((s, i) => `<li><button type="button" class="ps-sample" data-sample="${i}">
+              <span class="ps-sample-img"><img src="${sampleUrl(s.file, 360)}" alt="" width="360" height="240" decoding="async"></span>
+              <span class="ps-sample-cap"><span><span class="vh">Open sample photo: </span>${s.name}</span><span class="num"><span class="vh">, </span>${fmtBytes(s.bytes)}</span></span>
             </button></li>`).join('')}
           </ul>
         </div>
@@ -422,6 +426,7 @@
   function setView(v) {
     if (ps.dataset.view === v) return;
     ps.dataset.view = v;
+    if (v === 'empty') el.empty.classList.remove('is-first');   // fade in when coming back, not on first load
     el.empty.hidden = v !== 'empty';
     el.work.hidden = v !== 'work';
     if (v === 'work') { demoStop(); requestAnimationFrame(() => { fitView(); applyView(); }); syncSheet(); }
@@ -448,11 +453,11 @@
     li.dataset.id = e.id;
     li.dataset.status = 'reading';
     li.innerHTML = `
-      <button type="button" class="ps-row-main" aria-label="${esc(e.name)}">
+      <button type="button" class="ps-row-main">
         <span class="ps-thumb"><img alt="" draggable="false"></span>
         <span class="ps-row-text">
-          <span class="ps-row-name"><span class="ps-row-n">${esc(e.name)}</span><span class="ps-ovr" title="Has its own settings">${icon('sliders')}<span class="vh">Own settings</span></span></span>
-          <span class="ps-row-size num"><span class="ps-b0"></span><span class="ps-arrow" aria-hidden="true">→</span><span class="ps-b1"></span></span>
+          <span class="ps-row-name"><span class="ps-row-n">${esc(e.name)}</span><span class="ps-ovr" title="Has its own settings">${icon('sliders')}<span class="vh">, own settings</span></span></span>
+          <span class="ps-row-size num"><span class="vh">, </span><span class="ps-b0"></span><span class="ps-arrow" aria-hidden="true">→</span><span class="ps-b1"></span></span>
         </span>
         <span class="ps-pct ps-row-pct num"></span>
         <i class="ps-spin ps-row-spin" aria-hidden="true"></i>
@@ -753,13 +758,14 @@
     const pctEl = li.querySelector('.ps-row-pct');
     const meta = li.querySelector('.ps-row-meta');
     let outBytes = r ? (r.kept ? e.bytes : r.bytes) : null;
-    b1.textContent = outBytes != null ? fmtBytes(outBytes) : '';
+    // the button's name comes from what it shows (label in name); the hidden words make it read well
+    if (outBytes != null) b1.innerHTML = '<span class="vh"> to </span>' + esc(fmtBytes(outBytes)); else b1.textContent = '';
     if (r) {
       const p = r.kept ? 0 : pctOf(e.bytes, r.bytes);
-      pctEl.textContent = r.kept ? 'Kept' : fmtPct(p);
+      pctEl.innerHTML = '<span class="vh">, </span>' + esc(r.kept ? 'Kept' : fmtPct(p));
       pctEl.dataset.tone = r.kept || p > 0 ? 'warn' : p < 0 ? 'good' : 'flat';
     } else if (st === 'error' || st === 'failed') {
-      pctEl.textContent = 'Error'; pctEl.dataset.tone = 'bad';
+      pctEl.innerHTML = '<span class="vh">, </span>Error'; pctEl.dataset.tone = 'bad';
     } else { pctEl.textContent = ''; pctEl.dataset.tone = ''; }
     // third line: status, error with its fix, or the smallest-format hint
     let html = '';
@@ -777,7 +783,6 @@
       else html = '<span>' + esc(flabel(r.format)) + (r.width ? ' · ' + r.width + ' × ' + r.height : '') + '</span>';
     }
     if (meta.innerHTML !== html) meta.innerHTML = html;
-    li.querySelector('.ps-row-main').setAttribute('aria-label', e.name + (outBytes != null ? ', ' + fmtBytes(e.bytes) + ' to ' + fmtBytes(outBytes) : '') + (e.override ? ', own settings' : ''));
   }
 
   function renderTotals() {
@@ -1755,7 +1760,26 @@
     const saveData = navigator.connection && navigator.connection.saveData;
     if (saveData) { demo.tag.classList.remove('is-busy'); return; }
     const go = () => demoSchedule(0);
-    if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 1500 }); else setTimeout(go, 400);
+    // the preview fetches the 353 KB original, so it waits for the first screen
+    afterHero(() => { if ('requestIdleCallback' in window) requestIdleCallback(go, { timeout: 1500 }); else setTimeout(go, 400); });
+  }
+
+  // Runs fn once the studio's first picture has been painted (its largest-contentful-paint entry), or a
+  // moment after it decoded where that is not reported, so nothing the studio fetches in the background
+  // (the engine, the preview's original) competes with the first screen.
+  function afterHero(fn) {
+    let done = false, po = null;
+    const go = () => { if (done) return; done = true; if (po) po.disconnect(); fn(); };
+    const img = $('.ps-demo-a', demo.el);
+    try {
+      if (img && PerformanceObserver.supportedEntryTypes && PerformanceObserver.supportedEntryTypes.includes('largest-contentful-paint')) {
+        po = new PerformanceObserver((list) => { if (list.getEntries().some((e) => e.element === img)) setTimeout(go, 0); });
+        po.observe({ type: 'largest-contentful-paint', buffered: true });
+      }
+    } catch (e) { po = null; }
+    // where the picture is hidden (short phones) or is not the largest paint, carry on soon anyway
+    const fallback = () => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(go, po ? 1200 : 0)));
+    if (img && img.decode) img.decode().then(fallback, fallback); else fallback();
   }
 
   // ------------------------------------------------------------------ boot
@@ -1763,7 +1787,7 @@
   syncInspector();
   renderTotals();
   syncSheet();
-  engine().catch(() => { /* reported when a file is added */ });
+  afterHero(() => engine().catch(() => { /* reported when a file is added */ }));
   if (document.readyState === 'complete') demoBoot(); else window.addEventListener('load', demoBoot, { once: true });
 
   // a tiny surface for tests and for the landing page (read only)

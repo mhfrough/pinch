@@ -1062,6 +1062,7 @@
     const cfg = window.PinchConfig || {};
     const FORCE_NO_WASM = cfg.wasm === false || /[?&]pinch-nowasm(=1)?(&|$)/.test(location.search);
     const POOL_SIZE = Math.min(4, Math.max(1, (navigator.hardwareConcurrency || 2) - 1));
+    const WARM_DELAY = typeof cfg.warmDelay === "number" ? cfg.warmDelay : 1e4;
     const WEBP_1PX = "data:image/webp;base64,UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA";
     const AVIF_1PX = "data:image/avif;base64,AAAAHGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZgAAAOptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABwaWN0AAAAAAAAAAAAAAAAAAAAAA5waXRtAAAAAAABAAAAImlsb2MAAAAAREAAAQABAAAAAAEOAAEAAAAAAAAAEgAAACNpaW5mAAAAAAABAAAAFWluZmUCAAAAAAEAAGF2MDEAAAAAamlwcnAAAABLaXBjbwAAABNjb2xybmNseAABAA0ABoAAAAAMYXYxQ4EADAAAAAAUaXNwZQAAAAAAAAABAAAAAQAAABBwaXhpAAAAAAMICAgAAAAXaXBtYQAAAAAAAAABAAEEgYIDhAAAABptZGF0EgAKBzgADlAgIGkyCR/wAABAAACvcA==";
     let mode = "pending";
@@ -1274,13 +1275,9 @@
         decodeCapped: px.decodeCapped
       };
     }
-    const ready = (async () => {
-      const [webpNative, avifNative, webpCanvas, avifCanvas] = await Promise.all([
-        canDecode(WEBP_1PX),
-        canDecode(AVIF_1PX),
-        canvasEncodes("image/webp"),
-        canvasEncodes("image/avif")
-      ]);
+    let readyP = null;
+    const boot = () => readyP || (readyP = (async () => {
+      const [webpNative, avifNative] = await Promise.all([canDecode(WEBP_1PX), canDecode(AVIF_1PX)]);
       let wasm = false;
       if (!FORCE_NO_WASM && typeof Worker === "function" && typeof WebAssembly === "object") {
         try {
@@ -1309,9 +1306,10 @@
       mode = wasm ? "wasm" : "fallback";
       if (wasm && cfg.warm !== false) scheduleWarm();
       else if (warmDone) warmDone();
+      const [webpCanvas, avifCanvas] = wasm ? [true, true] : await Promise.all([canvasEncodes("image/webp"), canvasEncodes("image/avif")]);
       const encode = { jpeg: true, png: true, gif: true, bmp: true, ico: true, webp: wasm || webpCanvas, avif: wasm || avifCanvas };
       return { wasm, webpNative, avifNative, workers: wasm ? POOL_SIZE : 0, encode, heic: wasm };
-    })();
+    })());
     let warmDone = null, warmList;
     const warmed = new Promise((resolve) => {
       warmDone = () => {
@@ -1327,8 +1325,29 @@
         warmList = list;
         if (slots[0]) slots[0].worker.postMessage({ type: "warm", list });
       };
-      if (typeof requestIdleCallback === "function") requestIdleCallback(go, { timeout: 5e3 });
-      else setTimeout(go, 2e3);
+      const idle = () => {
+        if (typeof requestIdleCallback === "function") requestIdleCallback(go, { timeout: 5e3 });
+        else setTimeout(go, 2e3);
+      };
+      if (typeof window === "undefined" || typeof document === "undefined") {
+        idle();
+        return;
+      }
+      const EVENTS = ["pointerdown", "keydown", "touchstart", "wheel", "scroll"];
+      let timer = 0, started = false;
+      const start = () => {
+        if (started) return;
+        started = true;
+        clearTimeout(timer);
+        EVENTS.forEach((t) => window.removeEventListener(t, start, true));
+        idle();
+      };
+      EVENTS.forEach((t) => window.addEventListener(t, start, { capture: true, passive: true }));
+      const arm = () => {
+        timer = setTimeout(start, WARM_DELAY);
+      };
+      if (document.readyState === "complete") arm();
+      else window.addEventListener("load", arm, { once: true });
     }
     async function inspect(file) {
       if (!file || typeof file.slice !== "function") throw new Error(MSG.generic);
@@ -1337,7 +1356,7 @@
       try {
         src = await openSource(file, sn);
       } catch (e) {
-        const st = await ready;
+        const st = await boot();
         if (st.wasm && (sn.format === "heic" || sn.format === "avif" || sn.format === "webp")) return inspectInWorker(file, sn);
         throw e;
       }
@@ -1405,7 +1424,7 @@
     }
     async function prepare(file, settings) {
       if (!file || typeof file.slice !== "function") throw new Error(MSG.generic);
-      const st = await ready;
+      const st = await boot();
       const s = normaliseSettings(settings);
       const sn = await sniffFile(file);
       const id = idOf(file);
@@ -1506,7 +1525,7 @@
       }
     }
     async function preload(format) {
-      const st = await ready;
+      const st = await boot();
       if (!st.wasm) return;
       for (const s of slots) s.worker.postMessage({ type: "preload", format: format === "auto" ? "webp" : format });
     }
@@ -1517,8 +1536,13 @@
     }
     window.Pinch = {
       version: 2,
-      ready,
-      warmed,
+      get ready() {
+        return boot();
+      },
+      get warmed() {
+        boot();
+        return warmed;
+      },
       FORMATS,
       inspect,
       process,

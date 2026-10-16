@@ -32,7 +32,7 @@
   /* ink */
   --ink: #111214;
   --ink-2: #4a4c52;         /* secondary text */
-  --ink-3: #7c7f86;         /* tertiary, placeholders */
+  --ink-3: #686b72;         /* tertiary, placeholders (4.5:1 on --bg-sunken) */
   --ink-inverse: #ffffff;
 
   /* one accent: signal blue. It marks the primary action, focus and the compare divider. */
@@ -42,11 +42,11 @@
   --accent-soft: rgba(47, 92, 255, 0.10);
 
   /* meaning, separate from the accent */
-  --good: #0f8a52;
+  --good: #076a3d;          /* good, warn, bad: 4.5:1 as text on their own tint, even on --bg-hover */
   --good-soft: rgba(15, 138, 82, 0.12);
-  --warn: #b25e00;
+  --warn: #8f4b00;
   --warn-soft: rgba(178, 94, 0, 0.12);
-  --bad: #d12f2f;
+  --bad: #ad2020;
   --bad-soft: rgba(209, 47, 47, 0.10);
 
   /* the stage behind images: a neutral checkerboard shows transparency */
@@ -107,10 +107,10 @@
     --line-strong: rgba(255, 255, 255, 0.13);
     --ink: #f3f3f2;
     --ink-2: #a9abb1;
-    --ink-3: #74767d;
+    --ink-3: #8a8c93;
     --ink-inverse: #0c0d0f;
-    --accent: #5c7dff;
-    --accent-hover: #7590ff;
+    --accent: #4566ff;
+    --accent-hover: #3f62ff;
     --accent-ink: #ffffff;
     --accent-soft: rgba(92, 125, 255, 0.16);
     --good: #3ccf8e; --good-soft: rgba(60, 207, 142, 0.14);
@@ -131,10 +131,10 @@
   --line-strong: rgba(255, 255, 255, 0.13);
   --ink: #f3f3f2;
   --ink-2: #a9abb1;
-  --ink-3: #74767d;
+  --ink-3: #8a8c93;
   --ink-inverse: #0c0d0f;
-  --accent: #5c7dff;
-  --accent-hover: #7590ff;
+  --accent: #4566ff;
+  --accent-hover: #3f62ff;
   --accent-ink: #ffffff;
   --accent-soft: rgba(92, 125, 255, 0.16);
   --good: #3ccf8e; --good-soft: rgba(60, 207, 142, 0.14);
