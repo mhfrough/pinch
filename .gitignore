@@ -1,0 +1,8 @@
+.taste-skill/
+node_modules/
+tests/shots/
+test-results/
+playwright-report/
+*.log
+.DS_Store
+Thumbs.db

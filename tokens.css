@@ -1,0 +1,197 @@
+/* Pinch design system: tokens, fonts, base elements.
+   Every colour, size, radius and timing used in app.css and site.css comes from here.
+   Fonts are self-hosted (assets/fonts, SIL OFL 1.1). No CDN. */
+
+@font-face {
+  font-family: "Geist";
+  src: url("assets/fonts/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("assets/fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---------- light (default) ---------- */
+:root {
+  color-scheme: light;
+
+  /* surfaces: a quiet stack, separated by tone, never by heavy borders */
+  --bg: #f6f6f4;            /* page */
+  --bg-raised: #ffffff;     /* panels, cards, the stage */
+  --bg-sunken: #ececea;     /* wells, inputs, segmented tracks */
+  --bg-hover: #e4e4e1;
+  --line: rgba(17, 18, 20, 0.08);     /* hairline only inside UI controls */
+  --line-strong: rgba(17, 18, 20, 0.14);
+
+  /* ink */
+  --ink: #111214;
+  --ink-2: #4a4c52;         /* secondary text */
+  --ink-3: #7c7f86;         /* tertiary, placeholders */
+  --ink-inverse: #ffffff;
+
+  /* one accent: signal blue. It marks the primary action, focus and the compare divider. */
+  --accent: #2f5cff;
+  --accent-hover: #2149e6;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(47, 92, 255, 0.10);
+
+  /* meaning, separate from the accent */
+  --good: #0f8a52;
+  --good-soft: rgba(15, 138, 82, 0.12);
+  --warn: #b25e00;
+  --warn-soft: rgba(178, 94, 0, 0.12);
+  --bad: #d12f2f;
+  --bad-soft: rgba(209, 47, 47, 0.10);
+
+  /* the stage behind images: a neutral checkerboard shows transparency */
+  --stage: #e9e9e6;
+  --check-a: #e9e9e6;
+  --check-b: #dededa;
+
+  /* elevation: only for things that float above the page (popovers, dialogs, the dragged file) */
+  --shadow-float: 0 1px 2px rgba(17, 18, 20, 0.06), 0 8px 24px rgba(17, 18, 20, 0.10), 0 24px 64px rgba(17, 18, 20, 0.08);
+  --shadow-panel: 0 1px 0 rgba(17, 18, 20, 0.04), 0 1px 3px rgba(17, 18, 20, 0.05);
+
+  /* type */
+  --font: "Geist", ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Consolas, monospace;   /* keyboard keys and file sizes in tight UI only */
+
+  --text-xs: 0.75rem;      /* 12  captions in dense UI */
+  --text-sm: 0.8125rem;    /* 13  UI labels */
+  --text-base: 0.9375rem;  /* 15  UI body */
+  --text-md: 1.0625rem;    /* 17  reading text */
+  --text-lg: clamp(1.25rem, 1.1rem + 0.5vw, 1.5rem);        /* 20-24 lead */
+  --text-xl: clamp(1.75rem, 1.3rem + 1.6vw, 2.75rem);       /* 28-44 section titles */
+  --text-2xl: clamp(2.5rem, 1.4rem + 4.2vw, 5.25rem);       /* 40-84 page title */
+
+  --leading-tight: 1.04;
+  --leading-snug: 1.25;
+  --leading-body: 1.55;
+  --tracking-display: -0.035em;
+  --tracking-title: -0.025em;
+  --tracking-ui: -0.006em;
+
+  /* space: 4px grid */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px;
+  --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px; --s-20: 80px; --s-24: 96px; --s-32: 128px;
+  --gutter: clamp(16px, 3vw, 40px);       /* page side margin */
+  --content: 1240px;                       /* widest content column */
+
+  /* shape: one family of radii, nested so inner = outer - padding */
+  --r-xs: 6px; --r-sm: 8px; --r-md: 12px; --r-lg: 18px; --r-xl: 24px; --r-full: 999px;
+
+  /* motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --t-fast: 120ms; --t-base: 200ms; --t-slow: 420ms;
+
+  --focus: 0 0 0 3px var(--bg-raised), 0 0 0 5px var(--accent);
+}
+
+/* ---------- dark ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0c0d0f;
+    --bg-raised: #16171a;
+    --bg-sunken: #0f1012;
+    --bg-hover: #222328;
+    --line: rgba(255, 255, 255, 0.07);
+    --line-strong: rgba(255, 255, 255, 0.13);
+    --ink: #f3f3f2;
+    --ink-2: #a9abb1;
+    --ink-3: #74767d;
+    --ink-inverse: #0c0d0f;
+    --accent: #5c7dff;
+    --accent-hover: #7590ff;
+    --accent-ink: #ffffff;
+    --accent-soft: rgba(92, 125, 255, 0.16);
+    --good: #3ccf8e; --good-soft: rgba(60, 207, 142, 0.14);
+    --warn: #f0a23b; --warn-soft: rgba(240, 162, 59, 0.14);
+    --bad: #ff6b6b; --bad-soft: rgba(255, 107, 107, 0.14);
+    --stage: #101113; --check-a: #141518; --check-b: #1b1c20;
+    --shadow-float: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.45), 0 32px 80px rgba(0, 0, 0, 0.35);
+    --shadow-panel: 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0c0d0f;
+  --bg-raised: #16171a;
+  --bg-sunken: #0f1012;
+  --bg-hover: #222328;
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.13);
+  --ink: #f3f3f2;
+  --ink-2: #a9abb1;
+  --ink-3: #74767d;
+  --ink-inverse: #0c0d0f;
+  --accent: #5c7dff;
+  --accent-hover: #7590ff;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(92, 125, 255, 0.16);
+  --good: #3ccf8e; --good-soft: rgba(60, 207, 142, 0.14);
+  --warn: #f0a23b; --warn-soft: rgba(240, 162, 59, 0.14);
+  --bad: #ff6b6b; --bad-soft: rgba(255, 107, 107, 0.14);
+  --stage: #101113; --check-a: #141518; --check-b: #1b1c20;
+  --shadow-float: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 32px rgba(0, 0, 0, 0.45), 0 32px 80px rgba(0, 0, 0, 0.35);
+  --shadow-panel: 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* ---------- base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-padding-top: 72px; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font); font-size: var(--text-base); line-height: var(--leading-body);
+  letter-spacing: var(--tracking-ui); font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+h1, h2, h3, h4, p, figure, blockquote, ul, ol, dl, dd { margin: 0; }
+ul[class], ol[class] { padding: 0; list-style: none; }
+img, svg, video, canvas { display: block; max-width: 100%; }
+button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; }
+a { color: inherit; }
+h1, h2, h3 { font-weight: 600; text-wrap: balance; letter-spacing: var(--tracking-title); line-height: var(--leading-snug); }
+p { text-wrap: pretty; }
+::selection { background: var(--accent-soft); color: var(--ink); }
+:focus-visible { outline: none; box-shadow: var(--focus); border-radius: var(--r-xs); }
+[hidden] { display: none !important; }
+.num { font-variant-numeric: tabular-nums; }
+.vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+kbd { font-family: var(--font-mono); font-size: 0.85em; padding: 0.1em 0.4em; border-radius: var(--r-xs); background: var(--bg-sunken); box-shadow: inset 0 -1px 0 var(--line-strong); }
+
+/* ---------- shared controls ---------- */
+.btn {
+  --h: 36px;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+  height: var(--h); padding: 0 var(--s-4); border-radius: var(--r-full);
+  font-size: var(--text-sm); font-weight: 550; white-space: nowrap; text-decoration: none;
+  transition: background-color var(--t-fast), color var(--t-fast), transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(0.97); }
+.btn[disabled] { opacity: 0.4; pointer-events: none; }
+.btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-ink { background: var(--ink); color: var(--ink-inverse); }
+.btn-ink:hover { opacity: 0.88; }
+.btn-quiet { background: var(--bg-sunken); color: var(--ink); }
+.btn-quiet:hover { background: var(--bg-hover); }
+.btn-ghost { color: var(--ink-2); }
+.btn-ghost:hover { background: var(--bg-sunken); color: var(--ink); }
+.btn-lg { --h: 48px; padding: 0 var(--s-6); font-size: var(--text-base); }
+.btn-icon { width: var(--h); padding: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
+}
