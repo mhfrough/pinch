@@ -239,7 +239,7 @@
 .ui-list { display: grid; gap: var(--s-2); padding: var(--s-3); }
 .ui-foot {
   display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap;
-  padding: var(--s-1) var(--s-3) var(--s-3) var(--s-4);
+  padding: var(--s-3) var(--s-3) var(--s-3) var(--s-4);
 }
 .ui-total { color: var(--ink-2); }
 .ui-total strong { color: var(--ink); font-weight: 600; }
