@@ -52,7 +52,6 @@
   box-shadow: var(--shadow-panel);
   transition: box-shadow var(--t-base) var(--ease-out);
 }
-.ps.is-dropping .ps-hero { box-shadow: inset 0 0 0 2px var(--accent), var(--shadow-panel); }
 .ps-hero-copy { container-type: inline-size; min-width: 0; max-width: 640px; }
 .ps-h1 {
   font-size: min(calc(var(--text-2xl) * 0.86), 9.2cqi);
