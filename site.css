@@ -236,10 +236,12 @@
 .seg button:focus-visible { border-radius: var(--r-full); }
 
 /* batch list */
-.ui-list { display: grid; gap: var(--s-2); padding: var(--s-3); }
+/* .well .ui-list beats the ul[class] reset in tokens.css; the list soaks up any extra height the row gives the tile */
+.well .ui-list { flex: 1; display: grid; align-content: space-between; gap: var(--s-2); padding: var(--s-3); }
+.t-batch .well { justify-content: flex-start; }
 .ui-foot {
   display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap;
-  padding: var(--s-3) var(--s-3) var(--s-3) var(--s-4);
+  padding: 0 var(--s-3) var(--s-3) var(--s-4);
 }
 .ui-total { color: var(--ink-2); }
 .ui-total strong { color: var(--ink); font-weight: 600; }
