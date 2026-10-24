@@ -24,7 +24,7 @@ function check(name, ok, detail) {
 }
 
 const browser = await chromium.launch();
-const EXPECT = ['flick', 'scrawl', 'sizzle', 'swoop'].map((n) => `https://mhfrough.github.io/${n}/`);
+const EXPECT = ['flick', 'scrawl', 'sizzle', 'swoop', 'jot'].map((n) => `https://mhfrough.github.io/${n}/`);
 
 for (const [w, cols] of [[1440, 4], [768, 2], [360, 1]]) {
   for (const scheme of ['light', 'dark']) {
@@ -53,14 +53,14 @@ for (const [w, cols] of [[1440, 4], [768, 2], [360, 1]]) {
         hrefs: cards.map((a) => a.href),
         names: cards.map((a) => a.querySelector('.more-name').textContent),
         icons: cards.every((a) => { const s = a.querySelector('svg.more-ico'); return s && s.getAttribute('aria-hidden') === 'true' && s.getBoundingClientRect().width > 0; }),
-        perRow: cards.length / tops.size,
+        perRow: cards.filter((a) => Math.round(a.getBoundingClientRect().top) === Math.min(...tops)).length,
         shown: getComputedStyle(sec.querySelector('.more-grid')).opacity === '1',
         lastBeforeFooter: sec === document.querySelector('main').lastElementChild,
         overflow: document.documentElement.scrollWidth > innerWidth + 1,
       };
     });
     const tag = `more ${w} ${scheme}`;
-    check(`${tag}: links to Flick, Scrawl, Sizzle and Swoop`, JSON.stringify(m.hrefs) === JSON.stringify(EXPECT), m.hrefs);
+    check(`${tag}: links to Flick, Scrawl, Sizzle, Swoop and Jot`, JSON.stringify(m.hrefs) === JSON.stringify(EXPECT), m.hrefs);
     check(`${tag}: Pinch is not listed`, !m.hrefs.some((h) => /pinch/i.test(h)) && !m.names.includes('Pinch'), m.names);
     check(`${tag}: every card has a hidden icon`, m.icons);
     check(`${tag}: ${cols} per row`, m.perRow === cols, m.perRow);
